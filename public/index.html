@@ -697,7 +697,9 @@ function conectarDashboard() {
 
 // --- DETECCIÓN DE WIDGET O DASHBOARD ---
 const urlParams = new URLSearchParams(window.location.search);
-const isWidgetMode = urlParams.get('mode') === 'widget';
+
+// 🛑 CORRECCIÓN #1: Usamos la ruta '/widget' para detectar el modo
+const pathIsWidget = window.location.pathname === '/widget'; 
 
 // Variables globales
 let streamerId = "ID_POR_DEFECTO";
@@ -714,18 +716,31 @@ if (tiktokUserEl && tiktokUserEl.value.trim() !== "") {
     tiktokUser = tiktokUserEl.value.trim();
 }
 
-if (isWidgetMode) {
+if (pathIsWidget) { // 🛑 USAMOS pathIsWidget EN LUGAR DE isWidgetMode
     // ===============================
     // 🏃 MODO WIDGET (ESCLAVO)
     // ===============================
     document.body.classList.add('widget-mode');
-    streamerId = urlParams.get('id'); 
 
-    document.getElementById('main-dashboard-content').style.display = 'none';
-    document.getElementById('widget-container').style.display = 'flex';
+    // 🛑 CORRECCIÓN #2: Leemos el streamerId del parámetro 'streamerId' de la URL
+    streamerId = urlParams.get('streamerId'); 
+
+    // Ocultar el Dashboard
+    const mainDashboardContent = document.getElementById('main-dashboard-content');
+    if (mainDashboardContent) {
+        mainDashboardContent.style.display = 'none';
+    }
+    
+    // Mostrar el Widget (Asegúrate de que 'widget-container' esté visible, tu CSS debería manejarlo)
+    const widgetContainer = document.getElementById('widget-container');
+    if (widgetContainer) {
+        widgetContainer.style.display = 'flex'; // O 'block', según tu diseño
+    }
+
 
     if (streamerId) {
-        socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" });
+        // En modo Widget, el tiktokUser no es crítico, pero es buena práctica enviarlo
+        socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" }); 
         console.log(`WIDGET unido a la sala: ${streamerId}`);
     }
 
@@ -738,19 +753,17 @@ if (isWidgetMode) {
     if (streamerId && tiktokUser) {
         console.log(`DASHBOARD unido a la sala: ${streamerId} (${tiktokUser})`);
 
-        // ✅ Nueva conexión con tu servidor de TikTok
+        // Nueva conexión con tu servidor de TikTok
         socket.emit("iniciar_tiktok", { username: tiktokUser, streamerId });
 
         // Mostrar log
-        if (logDonacionesEl) {
+        if (logDonacionesEl) { // Asegúrate de que logDonacionesEl está definido en el ámbito superior
             logDonacionesEl.innerHTML += `<p style="color: cyan;">🎥 Conectando con TikTok Live de @${tiktokUser}</p>`;
         }
     } else {
         console.error("⚠️ Falta el ID o el usuario de TikTok.");
     }
-}
-
-        // ===============================
+}// ===============================
 // 🎁 ESCUCHAR REGALOS EN TIEMPO REAL DESDE EL SERVIDOR
 // (Esto corre en AMBOS: Dashboard y Widget)
 // ===============================
@@ -853,11 +866,22 @@ function actualizarParticipantesUI() {
     });
 }
 
-/* ================================== */
-/* 👆 FIN DEL BLOQUE PARA PEGAR 👆 */
-/* ================================== */
 function abrirWidget() {
-    window.electronAPI.abrirWidgetVentana("https://tiktok-servidor2.onrender.com/?mode=widget");
+    // 1. Obtener el ID Único del Streamer del input
+    const streamerIdInput = document.getElementById('id-unico-del-streamer'); 
+    const streamerId = streamerIdInput ? streamerIdInput.value : '';
+    
+    if (!streamerId) {
+        alert('Por favor, introduce el ID del Streamer primero.');
+        return;
+    }
+    
+    // 2. Construir la URL completa (usando /widget y el streamerId)
+    const baseUrl = window.location.origin; 
+    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`; 
+    
+    // 3. Abrir la nueva ventana (Función estándar de JavaScript)
+    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580'); 
 }
 
 /* ================================================== */
