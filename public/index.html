@@ -684,43 +684,38 @@ function conectarDashboard() {
     }
 });
 
-        // --- LÓGICA DE DETECCIÓN DE WIDGET Y CONEXIÓN TIKFINITY ---
-// ...
+// --- DETECCIÓN DE WIDGET O DASHBOARD ---
 const urlParams = new URLSearchParams(window.location.search);
-const isWidgetMode = urlParams.get('mode') === 'widget'; // Variable global (ya existe)
+const isWidgetMode = urlParams.get('mode') === 'widget';
 
+// Variables globales
+let streamerId = "ID_POR_DEFECTO";
+let tiktokUser = "USUARIO_POR_DEFECTO";
 
-// 1. Obtener los valores de los inputs
-let streamerId = "ID_POR_DEFECTO"; // ⬅️ IMPORTANTE: ESTO DEBE CAMBIAR
-let tiktokUser = "USUARIO_POR_DEFECTO"; // ⬅️ ESTO DEBE CAMBIAR
+// Leer inputs del HTML (si existen)
 const idUnicoEl = document.getElementById('idUnico');
 const tiktokUserEl = document.getElementById('tiktokUser');
 
-if (idUnicoEl) {
-    streamerId = idUnicoEl.value; // Lee el valor
+if (idUnicoEl && idUnicoEl.value.trim() !== "") {
+    streamerId = idUnicoEl.value.trim();
 }
-if (tiktokUserEl) {
-    tiktokUser = tiktokUserEl.value; // Lee el valor
+if (tiktokUserEl && tiktokUserEl.value.trim() !== "") {
+    tiktokUser = tiktokUserEl.value.trim();
 }
-// ...
 
 if (isWidgetMode) {
     // ===============================
     // 🏃 MODO WIDGET (ESCLAVO)
     // ===============================
     document.body.classList.add('widget-mode');
-    
-    // Si estamos en widget, el streamerId debe venir de la URL
     streamerId = urlParams.get('id'); 
-    
-    // Ocultamos el dashboard principal y mostramos el contenedor del widget
+
     document.getElementById('main-dashboard-content').style.display = 'none';
     document.getElementById('widget-container').style.display = 'flex';
-    
+
     if (streamerId) {
-        // El Widget se une a la sala
-        socket.emit("join_room", { streamerId: streamerId, tiktokUser: "WidgetCliente" }); // El Widget se identifica como tal
-        console.log(`WIDGET unido a la sala: ${streamerId} (WidgetCliente)`);
+        socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" });
+        console.log(`WIDGET unido a la sala: ${streamerId}`);
     }
 
 } else {
@@ -728,145 +723,21 @@ if (isWidgetMode) {
     // 🖥️ MODO DASHBOARD (MAESTRO)
     // ===============================
     document.getElementById('widget-container').style.display = 'none';
-    
-    if (streamerId) { // Si hay ID Único ingresado
-        // El Dashboard se une a la sala
+
+    if (streamerId && tiktokUser) {
         console.log(`DASHBOARD unido a la sala: ${streamerId} (${tiktokUser})`);
 
-        // 🎁 CONEXIÓN CON TIKFINITY EVENT API (SOLO DASHBOARD) <--- TU CÓDIGO COMIENZA AQUÍ
-        // ... (El resto de tu lógica de conexión a TikFinity) ...
+        // ✅ Nueva conexión con tu servidor de TikTok
+        socket.emit("iniciar_tiktok", { username: tiktokUser, streamerId });
+
+        // Mostrar log
+        if (logDonacionesEl) {
+            logDonacionesEl.innerHTML += `<p style="color: cyan;">🎥 Conectando con TikTok Live de @${tiktokUser}</p>`;
+        }
     } else {
-        console.error("ID Único no ingresado. Por favor, complete el campo 'ID Único (para Widget)'.");
+        console.error("⚠️ Falta el ID o el usuario de TikTok.");
     }
 }
-
-             // ===============================
-             // 🎁 CONEXIÓN CON TIKFINITY EVENT API (SOLO DASHBOARD) <--- MOVIDO AQUÍ
-             // ===============================
-             try {
-                 socket.emit('iniciar_tiktok', {
-  username: tiktokUser,
-  streamerId: streamerId
-});
-
-                 tiktokWS.onopen = () => {
-                     console.log("✅ Conectado a TikFinity Event API");
-                     // Asegurarse de que logDonacionesEl exista antes de usarlo
-                     if (logDonacionesEl) {
-                         logDonacionesEl.innerHTML += `<p style="color: cyan;">✅ Conectado a TikFinity Event API</p>`;
-                     }
-                 };
-
-                 tiktokWS.onmessage = (event) => {
-                     // Asegurarse de que logDonacionesEl exista antes de usarlo
-                     if (!logDonacionesEl) return; 
-                     if (!subastaActiva) {
-                        return; // Ignora todo si la subasta no está activa
-         }
-
-                     try {
-                         const msg = JSON.parse(event.data);
-                         if (!msg.event) return;
-
-                         switch (msg.event) {
-                             case "gift": { // 🌟 INICIO DE LA CORRECCIÓN FINAL 🌟
-                                 const gift = msg.data;
-                                 console.log("DATOS COMPLETOS REGALO:", JSON.stringify(gift, null, 2));  
-
-                                 // 1️⃣ ID ÚNICO del evento
-                                 const giftEventId = gift.msgId;   
-                                 if (!giftEventId) {
-                                     console.log("Ignorando evento gift sin msgId");
-                                     break; // No podemos procesar sin ID de evento
-                                 }
-
-                                 // 2️⃣ Ignorar duplicados (por seguridad)
-                                 if (processedGiftIds.has(giftEventId)) {
-                                     console.log(`Regalo ya procesado: ${giftEventId}`);
-                                     break;
-                                 }
-
-                                 // 3️⃣ Filtro inteligente:
-                                 // - Si tiene repeatEnd: procesamos solo el final
-                                 // - Si NO tiene repeatEnd: lo procesamos igual (regalos grandes o únicos)
-                                 if (gift.repeatEnd === false) { 
-                                 
-                                 // 🛑 Excepción clave: Si el regalo vale 100 o más, lo procesamos.
-                                 if (gift.diamondCount >= 100) {
-                                     console.log(`💎 Regalo grande (>=100) detectado: Procesando a pesar de repeatEnd: false.`);
-                                 } else {
-                                     console.log(`Ignorando evento intermedio (repeatEnd: false). Esperando el final del combo.`);
-                                     break;
-                                 }
-                             }
-                                 
-                                 // (Si repeatEnd es 'true' o 'undefined', el código continúa)
-
-                                 // 4️⃣ Marcamos el ID como procesado
-                                 processedGiftIds.add(giftEventId);
-
-                                 // 5️⃣ Calculamos el total de diamantes correctamente
-                                 const totalDiamonds = (gift.diamondCount || 0) * (gift.repeatCount || 1);
-                                 
-                                 // 5.1 No procesar regalos sin valor (por si acaso)
-                                 if (totalDiamonds === 0) {
-                                     console.log("Ignorando regalo con 0 diamantes.");
-                                     break;
-                                 }
-
-                                 // 6️⃣ Mostramos en pantalla y enviamos al servidor
-                                 logDonacionesEl.innerHTML += `<p style="color: gold;">🎁 ${gift.uniqueId} envió ${gift.giftName} (${totalDiamonds}💎)</p>`;
-                                 
-                                 socket.emit("nuevo_regalo", {
-    usuario: gift.uniqueId,
-    cantidad: totalDiamonds,
-    regalo: gift.giftName,
-    avatar_url: gift.profilePictureUrl, // ⬅️ ¡AGREGA ESTA COMA!
-    streamerId: streamerId // CRÍTICO: ANADE ESTA LINEA
-});
-
-                                 break; // ✅ Fin del case
-                             }
-
-                             case "chat":
-                                 const chat = msg.data;
-                                 logDonacionesEl.innerHTML += `<p style="color: lightgreen;">💬 ${chat.uniqueId}: ${chat.comment}</p>`;
-                                 break;
-
-                             case "like":
-                                 const like = msg.data;
-                                 logDonacionesEl.innerHTML += `<p style="color: pink;">❤️ ${like.uniqueId} dio like</p>`;
-                                 break;
-
-                             case "follow":
-                                 const follow = msg.data;
-                                 logDonacionesEl.innerHTML += `<p style="color: orange;">⭐ ${follow.uniqueId} empezó a seguirte</p>`;
-                                 break;
-                         }
-
-                         // Mantenemos el log visible siempre abajo
-                         logDonacionesEl.scrollTop = logDonacionesEl.scrollHeight;
-
-                     } catch (e) {
-                         console.error("Error al procesar mensaje TikFinity:", e);
-                         logDonacionesEl.innerHTML += `<p style="color: red;">⚠️ Error procesando evento TikFinity.</p>`;
-                     }
-                 };
-
-                 tiktokWS.onclose = () => {
-                      // Asegurarse de que logDonacionesEl exista antes de usarlo
-                     if (logDonacionesEl) {
-                         logDonacionesEl.innerHTML += `<p style="color: red;">❌ Desconectado de TikFinity Event API</p>`;
-                     }
-                 };
-
-             } catch (err) {
-                 console.error("Error al conectar con TikFinity:", err);
-                  // Asegurarse de que logDonacionesEl exista antes de usarlo
-                 if (logDonacionesEl) {
-                     logDonacionesEl.innerHTML += `<p style="color: red;">❌ Error al conectar con TikFinity.</p>`;
-                 }
-             }
 
         // ===============================
 // 🎁 ESCUCHAR REGALOS EN TIEMPO REAL DESDE EL SERVIDOR
