@@ -30,7 +30,14 @@ app.get("/", (req, res) => {
 // ===============================
 const TIKTOK_USERNAME = process.env.TIKTOK_USERNAME || "@tu_usuario_tiktok";
 
-const tiktokLiveConnection = new WebcastPushConnection(TIKTOK_USERNAME);
+const tiktokLiveConnection = new WebcastPushConnection(TIKTOK_USERNAME, {
+  enableWebsocketUpgrade: true,
+  requestOptions: {
+    timeout: 10000,
+  },
+  disableEulerFallbacks: true // 👈 evita error de permiso con EulerStream
+});
+
 
 tiktokLiveConnection.connect().then((state) => {
   console.log(`✅ Conectado a la sala de ${TIKTOK_USERNAME}`);
