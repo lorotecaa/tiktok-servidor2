@@ -688,93 +688,80 @@ function conectarDashboard() {
                 subtextElWidget.textContent = "Tiempo por delay de live"; 
             }
         
-        } else {
-            
-            // 1. Desactiva la clase (vuelve al AMARILLO original si no está en Snipe)
-            document.body.classList.remove('snipe-alert');
-            
-            // 2. Restaura el texto original del subtítulo (si la subasta aún no ha terminado, es el texto por defecto)
-            if (subtextElWidget) {
-                subtextElWidget.textContent = "El sorteo/subasta termina en"; 
+            } else {
+                
+                // 1. Desactiva la clase (vuelve al AMARILLO original si no está en Snipe)
+                document.body.classList.remove('snipe-alert');
+                
+                // 2. Restaura el texto original del subtítulo (si la subasta aún no ha terminado, es el texto por defecto)
+                if (subtextElWidget) {
+                    subtextElWidget.textContent = "El sorteo/subasta termina en"; 
+                }
             }
         }
-    }
-});
+    });
 
-// --- DETECCIÓN DE WIDGET O DASHBOARD ---
-const urlParams = new URLSearchParams(window.location.search);
-const pathIsWidget = window.location.pathname.includes('/widget');
+    // --- DETECCIÓN DE WIDGET O DASHBOARD ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPath = window.location.pathname || "";
+    const isWidgetMode = currentPath.includes("/widget");
 
-// Variables globales, solo se inicializan (no se llenan con DOM aquí)
-let streamerId = "ID_POR_DEFECTO";
-let tiktokUser = "USUARIO_POR_DEFECTO";
+    // Variables globales
+    let streamerId = "ID_POR_DEFECTO";
+    let tiktokUser = "USUARIO_POR_DEFECTO";
 
+    if (isWidgetMode) {
+        console.log("🧩 Iniciando en modo WIDGET...");
 
-if (pathIsWidget) { // 🛑 MODO WIDGET
-    // ===============================
-    // 🏃 MODO WIDGET (ESCLAVO)
-    // ===============================
-    document.body.classList.add('widget-mode');
+        // Forzar modo widget
+        document.body.classList.add("widget-mode");
+        document.body.style.background = "transparent";
 
-    // 1. Ocultar el Dashboard
-    const mainDashboardContent = document.getElementById('main-dashboard-content');
-    if (mainDashboardContent) {
-        mainDashboardContent.style.display = 'none';
-    }
-    
-    // 2. Mostrar el Widget (El CSS ya lo hace, pero forzamos por JS si es necesario)
-    const widgetContainer = document.getElementById('widget-container');
-    if (widgetContainer) {
-        // Tu CSS ya lo controla, pero lo mantenemos por seguridad
-        widgetContainer.style.display = 'flex'; 
-    }
+        // Ocultar dashboard si existe
+        const mainDashboardContent = document.getElementById("main-dashboard-content");
+        if (mainDashboardContent) mainDashboardContent.style.display = "none";
 
-    // 3. Leemos el streamerId CRÍTICO DE LA URL
-    streamerId = urlParams.get('streamerId'); 
+        // Crear contenedor si no existe
+        let widgetContainer = document.getElementById("widget-container");
+        if (!widgetContainer) {
+            widgetContainer = document.createElement("div");
+            widgetContainer.id = "widget-container";
+            widgetContainer.style.display = "flex";
+            widgetContainer.style.justifyContent = "center";
+            widgetContainer.style.alignItems = "center";
+            widgetContainer.style.width = "100%";
+            widgetContainer.style.height = "100vh";
+            widgetContainer.style.background = "transparent";
+            widgetContainer.innerHTML = `
+                <ul id="listaParticipantes-widget" style="
+                    list-style:none;
+                    width: 90%;
+                    padding:0;
+                    color:white;
+                    font-size:18px;
+                    font-family:sans-serif;
+                ">
+                    <li>⏳ Esperando regalos...</li>
+                </ul>`;
+            document.body.appendChild(widgetContainer);
+        }
 
-    if (streamerId) {
-        socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" }); 
-        console.log(`WIDGET unido a la sala: ${streamerId}`);
+        // Leer streamerId desde la URL
+        streamerId = urlParams.get("streamerId");
+        if (streamerId) {
+            socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" });
+            console.log(`✅ WIDGET unido a la sala de ${streamerId}`);
+        } else {
+            console.error("⚠️ El Widget no recibió el streamerId en la URL");
+        }
+
     } else {
-        console.error("⚠️ El Widget no recibió el streamerId de la URL.");
+        console.log("🎛️ Dashboard normal");
     }
 
-} else {
     // ===============================
-    // 🖥️ MODO DASHBOARD (MAESTRO)
-    // ===============================
-    
-    // 🛑 CRÍTICO: Mover la lectura de los inputs SÓLO al modo Dashboard
-    const idUnicoEl = document.getElementById('idUnico');
-    const tiktokUserEl = document.getElementById('tiktokUser');
-
-    if (idUnicoEl && idUnicoEl.value.trim() !== "") {
-        streamerId = idUnicoEl.value.trim();
-    }
-    if (tiktokUserEl && tiktokUserEl.value.trim() !== "") {
-        tiktokUser = tiktokUserEl.value.trim();
-    }
-    
-    document.getElementById('widget-container').style.display = 'none';
-
-    if (streamerId !== "ID_POR_DEFECTO" && tiktokUser !== "USUARIO_POR_DEFECTO") {
-        console.log(`DASHBOARD unido a la sala: ${streamerId} (${tiktokUser})`);
-
-        // Nueva conexión con tu servidor de TikTok
-        socket.emit("iniciar_tiktok", { username: tiktokUser, streamerId });
-
-        // Mostrar log
-        const logDonacionesEl = document.getElementById('logDonaciones'); // Asegúrate de leer el elemento
-        if (logDonacionesEl) { 
-            logDonacionesEl.innerHTML += `<p style="color: cyan;">🎥 Conectando con TikTok Live de @${tiktokUser}</p>`;
-        }
-    } else {
-        console.error("⚠️ Falta el ID o el usuario de TikTok.");
-    }
-}
-// ===============================
-// 🎁 ESCUCHAR REGALOS EN TIEMPO REAL DESDE EL SERVIDOR
-// (Esto corre en AMBOS: Dashboard y Widget)
+    // 🎁 ESCUCHAR REGALOS EN TIEMPO REAL DESDE EL SERVIDOR
+    // (Esto corre en AMBOS: Dashboard y Widget)
 // ===============================
 socket.on("new_gift", (giftData) => {
     console.log("💎 Nuevo regalo recibido del servidor:", giftData);
