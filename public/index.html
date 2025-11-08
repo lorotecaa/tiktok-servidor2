@@ -827,15 +827,14 @@ function actualizarParticipantesUI() {
 
     participantes.forEach((p, index) => {
         const itemHTML = `
-            <li>
+            <li class="participante-item">
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <span>${index + 1}.</span>
+                    <span class="rank">${index + 1}.</span>
                     <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=U'}"
-     alt="avatar"
-     style="width:40px; height:40px; border-radius:50%;">
-                         alt="avatar"
-                         style="width:40px; height:40px; border-radius:50%;">
-                    <span>${p.usuario}</span>
+                        alt="${p.usuario || 'Usuario'}" 
+                        style="width:40px; height:40px; border-radius:50%;"> 
+                    
+                    <span class="username">${p.usuario}</span>
                 </div>
                 <div class="coins">${p.cantidad} 💎</div>
             </li>
