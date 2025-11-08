@@ -867,20 +867,23 @@ function actualizarParticipantesUI() {
 }
 
 function abrirWidget() {
-    // 1. Obtener el ID Único del Streamer del input
-    const streamerIdInput = document.getElementById('id-unico-del-streamer'); 
-    const streamerId = streamerIdInput ? streamerIdInput.value : '';
+    // 🛑 CRÍTICO: Asegurarse de que 'idUnico' es el ID correcto del input HTML
+    const streamerIdInput = document.getElementById('idUnico'); 
     
+    // Leer el valor del input y eliminar espacios extra (.trim())
+    const streamerId = streamerIdInput ? streamerIdInput.value.trim() : ''; 
+    
+    // Si no hay ID, muestra la alerta
     if (!streamerId) {
         alert('Por favor, introduce el ID del Streamer primero.');
         return;
     }
     
-    // 2. Construir la URL completa (usando /widget y el streamerId)
+    // Construir la URL con el ID capturado
     const baseUrl = window.location.origin; 
     const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`; 
     
-    // 3. Abrir la nueva ventana (Función estándar de JavaScript)
+    // Abrir la nueva ventana
     window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580'); 
 }
 
