@@ -207,6 +207,8 @@
             <h2>🎮 Controles</h2>
             <label for="idUnico">🔑 ID Único (para Widget):</label><br>
             <input type="text" id="idUnico" placeholder="Ej: MiNombreDeUsuario" style="width: 90%; margin-bottom: 15px; padding: 5px;"><br>
+            <label>Usuario de TikTok:</label>
+<input id="tiktokUser" placeholder="Ej: felipe_rivas" />
             <div class="subcuadro">
                 <label for="tiempo">⏱ Tiempo inicial (segundos):</label><br>
                 <input type="number" id="tiempo" value="200"><br><br>
@@ -428,35 +430,43 @@
     }
 }
 function conectarDashboard() {
-    // 1. Lee ÚNICAMENTE el input ID Único
+    // 1. Lee el ID único del streamer (para el widget)
     const idUnicoEl = document.getElementById('idUnico');
-    let streamerIdActual = idUnicoEl ? idUnicoEl.value : "";
+    const streamerIdActual = idUnicoEl ? idUnicoEl.value.trim() : "";
 
+    // 2. Lee el username de TikTok desde un input adicional
+    const tiktokUserEl = document.getElementById('tiktokUser');
+    const tiktokUserActual = tiktokUserEl ? tiktokUserEl.value.trim() : "";
+
+    // 3. Validaciones
     if (!streamerIdActual) {
-        alert("ERROR: Debes escribir el ID Único (para Widget) antes de iniciar la subasta.");
-        isConnectedValid = false; // ❌ Asegura que sea falso si falta el ID
-        return; 
+        alert("❌ Debes escribir el ID Único (para Widget) antes de iniciar la subasta.");
+        isConnectedValid = false;
+        return;
     }
-    
-    // 🆕 AÑADE ESTA LÍNEA CLAVE 🆕
-    // ASUMIMOS que el ID será válido. SOLO el evento 'id_invalido' la pondrá en 'false'.
-    isConnectedValid = true; 
 
-    // 2. Establecer el TikTok User
-    let tiktokUserActual = "No Requerido";
-    
-    // 3. Emitir el evento de conexión
+    if (!tiktokUserActual) {
+        alert("⚠️ Debes escribir tu nombre de usuario de TikTok (sin @).");
+        isConnectedValid = false;
+        return;
+    }
+
+    // 4. Marcar la conexión como válida (hasta que el servidor diga lo contrario)
+    isConnectedValid = true;
+
+    // 5. Emitir el evento de unión a la sala
     socket.emit("join_room", { 
         streamerId: streamerIdActual, 
         tiktokUser: tiktokUserActual 
-    }); 
-    
-    // 4. Actualizar las variables globales
-    streamerId = streamerIdActual; 
-    tiktokUser = tiktokUserActual; 
+    });
 
-    console.log(`DASHBOARD intentando unirse a sala: ${streamerIdActual}`);
+    // 6. Guardar variables globales
+    streamerId = streamerIdActual;
+    tiktokUser = tiktokUserActual;
+
+    console.log(`✅ DASHBOARD conectado a sala: ${streamerIdActual} (usuario TikTok: ${tiktokUserActual})`);
 }
+
         function terminarTiempo() {
     // 1. Esta función solo debe correr en el Dashboard (el "Maestro")
     if (!document.body.classList.contains('widget-mode')) { 
