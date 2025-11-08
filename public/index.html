@@ -828,17 +828,18 @@ function actualizarParticipantesUI() {
     participantes.forEach((p, index) => {
         const itemHTML = `
             <li class="participante-item">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <span class="rank">${index + 1}.</span>
-                    <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=U'}"
-                        alt="${p.usuario || 'Usuario'}" 
-                        style="width:40px; height:40px; border-radius:50%;"> 
-                    
-                    <span class="username">${p.usuario}</span>
-                </div>
-                <div class="coins">${p.cantidad} 💎</div>
-            </li>
-        `;
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span class="rank">${index + 1}.</span>
+            <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=U'}"
+                alt="${p.usuario || 'Usuario'}" 
+                style="width:40px; height:40px; border-radius:50%;"> 
+            
+            <span class="username" title="${p.usuario}"> ${p.usuario}
+            </span>
+        </div>
+        <div class="coins">${p.cantidad} 💎</div>
+    </li>
+`
 
         if (listaDashboard && !document.body.classList.contains('widget-mode')) {
             listaDashboard.innerHTML += itemHTML;
