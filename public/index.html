@@ -252,6 +252,8 @@
     </div> 
 
     <div id="widget-container">
+     <ul id="listaParticipantes-widget" style="color:white; font-family:sans-serif; list-style:none; padding:0;"></ul>
+</div>
     <div id="tiempoBox-widget">...</div>
     <div id="participantes-widget">
         <ul id="listaParticipantes-widget"></ul>
@@ -304,54 +306,54 @@
         }
         
         function actualizarParticipantesUI() {
-            participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
-            
-            const isWidgetMode = document.body.classList.contains('widget-mode');
-            
-            // 1. Apuntamos a las listas correctas
-            const listaDashboardEl = document.getElementById('listaParticipantes');
-            const listaWidgetEl = document.getElementById('listaParticipantes-widget'); 
+    participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
+    
+    const isWidgetMode = document.body.classList.contains('widget-mode');
+    
+    // 1. Apuntamos a las listas correctas
+    const listaDashboardEl = document.getElementById('listaParticipantes');
+    const listaWidgetEl = document.getElementById('listaParticipantes-widget'); 
 
-            // 2. Limpiamos ambas listas
-            if (listaDashboardEl) listaDashboardEl.innerHTML = "";
-            if (listaWidgetEl) listaWidgetEl.innerHTML = "";
+    // 2. Limpiamos ambas listas
+    if (listaDashboardEl) listaDashboardEl.innerHTML = "";
+    if (listaWidgetEl) listaWidgetEl.innerHTML = "";
+    
+    let totalDiamantes = 0;
+    const topN = participantes.slice(0, 5); // Tomamos el Top 5 para el widget
+
+    participantes.forEach((p, index) => {
+        const liDashboard = document.createElement("li");
+        
+        // Formato de Dashboard
+        liDashboard.textContent = `${p.usuario} - ${p.cantidad} 💎`;
+        if (listaDashboardEl) listaDashboardEl.appendChild(liDashboard);
+
+        // Formato de Widget (Solo el Top 5)
+        if (index < 5 && listaWidgetEl) {
+            const liWidget = document.createElement("li");
+            const rango = index + 1;
             
-            let totalDiamantes = 0;
-            const topN = participantes.slice(0, 5); // Tomamos el Top 5 para el widget
+            const avatarUrl = p.avatar_url || 'https://via.placeholder.com/30/555/FFFFFF?text=A'; 
 
-            participantes.forEach((p, index) => {
-                const liDashboard = document.createElement("li");
-                
-                // Formato de Dashboard
-                liDashboard.textContent = `${p.usuario} - ${p.cantidad} 💎`;
-                if (listaDashboardEl) listaDashboardEl.appendChild(liDashboard);
-
-                // Formato de Widget (Solo el Top 5)
-                if (index < 5 && listaWidgetEl) {
-                    const liWidget = document.createElement("li");
-                    const rango = index + 1;
-                    
-                    const avatarUrl = p.avatar_url || 'https://via.placeholder.com/30/555/FFFFFF?text=A'; 
-
-                    liWidget.innerHTML = `
-                        <div class="rank-icon">${rango}</div>
-                        <div class="user-info">
-                            <div class="user-avatar"><img src="${avatarUrl}" alt="Avatar"></div>
-                            <span class="username">${p.usuario}</span>
-                        </div>
-                        <span class="coins">${p.cantidad} 🪙</span>
-                    `;
-                    listaWidgetEl.appendChild(liWidget);
-                }
-                
-                totalDiamantes += p.cantidad;
-            });
-            
-            if (!isWidgetMode) {
-                 document.querySelector('#totalParticipantes').textContent = participantes.length;
-                 document.querySelector('#totalDiamantes').textContent = totalDiamantes;
-            }
+            liWidget.innerHTML = `
+                <div class="rank-icon">${rango}</div>
+                <div class="user-info">
+                    <div class="user-avatar"><img src="${avatarUrl}" alt="Avatar"></div>
+                    <span class="username">${p.usuario}</span>
+                </div>
+                <span class="coins">${p.cantidad} 🪙</span>
+            `;
+            listaWidgetEl.appendChild(liWidget);
         }
+        
+        totalDiamantes += p.cantidad;
+    });
+    
+    if (!isWidgetMode) {
+         document.querySelector('#totalParticipantes').textContent = participantes.length;
+         document.querySelector('#totalDiamantes').textContent = totalDiamantes;
+    }
+}
         function obtenerGanador() {
     if (participantes.length === 0) return null;
     return participantes.reduce((max, p) => (p.coins > max.coins ? p : max));
