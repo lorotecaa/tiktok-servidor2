@@ -704,7 +704,7 @@ function conectarDashboard() {
     // --- DETECCIÓN DE WIDGET O DASHBOARD ---
     const urlParams = new URLSearchParams(window.location.search);
     const currentPath = window.location.pathname || "";
-    const isWidgetMode = currentPath.includes("/widget");
+    const isWidgetMode = window.location.search.includes("mode=widget") || currentPath.includes("/widget");
 
     // Variables globales
     let streamerId = "ID_POR_DEFECTO";
@@ -872,7 +872,7 @@ function abrirWidget() {
     }
 
     const baseUrl = "https://tiktok-servidor2.onrender.com";
-    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`;
+    const widgetURL = `${baseUrl}/?mode=widget&streamerId=${streamerId}`;
     
     window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580');
 }
