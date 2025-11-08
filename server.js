@@ -21,8 +21,14 @@ const PORT = process.env.PORT || 10000;
 // Carpeta pública
 app.use(express.static(path.join(__dirname, "public")));
 
+// Ruta para el Dashboard principal
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// 🛑 AÑADIDO: Ruta para el Widget
+app.get("/widget", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ===============================
