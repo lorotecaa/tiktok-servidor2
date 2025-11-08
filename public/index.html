@@ -876,24 +876,21 @@ function actualizarParticipantesUI() {
 }
 
 function abrirWidget() {
-    // 🛑 CRÍTICO: Asegurarse de que 'idUnico' es el ID correcto del input HTML
-    const streamerIdInput = document.getElementById('idUnico'); 
+    const streamerIdInput = document.getElementById('idUnico');
+    const streamerId = streamerIdInput ? streamerIdInput.value.trim() : '';
     
-    // Leer el valor del input y eliminar espacios extra (.trim())
-    const streamerId = streamerIdInput ? streamerIdInput.value.trim() : ''; 
-    
-    // Si no hay ID, muestra la alerta
     if (!streamerId) {
         alert('Por favor, introduce el ID del Streamer primero.');
         return;
     }
     
-    // Construir la URL con el ID capturado
-    const baseUrl = window.location.origin; 
-    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`; 
+    // CRÍTICO: Construir la URL completa y absoluta (protocolo + dominio + ruta)
+    // window.location.origin devuelve, por ejemplo: https://tiktok-servidor2.onrender.com
+    const baseUrl = "https://tiktok-servidor2.onrender.com"; // 🛑 Reemplaza con tu URL real
+    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`;
     
-    // Abrir la nueva ventana
-    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580'); 
+    // Abrir la nueva ventana con la URL COMPLETA
+    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580');
 }
 
 /* ================================================== */
