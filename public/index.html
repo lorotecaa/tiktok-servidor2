@@ -252,9 +252,11 @@
     </div> 
 
     <div id="widget-container">
-     <ul id="listaParticipantes-widget" style="color:white; font-family:sans-serif; list-style:none; padding:0;"></ul>
-</div>
-    <div id="tiempoBox-widget">...</div>
+    <div id="tiempoBox-widget">
+        <div id="tiempoRestante-widget">--:--</div>
+        <div id="subtext-widget">El sorteo/subasta termina en</div>
+    </div>
+
     <div id="participantes-widget">
         <ul id="listaParticipantes-widget"></ul>
     </div>
@@ -862,7 +864,7 @@ function actualizarParticipantesUI() {
 function abrirWidget() {
     const streamerIdInput = document.getElementById('idUnico');
     const streamerId = streamerIdInput ? streamerIdInput.value.trim() : '';
-
+    
     if (!streamerId) {
         alert('Por favor, introduce el ID del Streamer primero.');
         return;
@@ -870,7 +872,7 @@ function abrirWidget() {
 
     const baseUrl = "https://tiktok-servidor2.onrender.com";
     const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`;
-
+    
     window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580');
 }
 /* ================================================== */
