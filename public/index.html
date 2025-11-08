@@ -1016,6 +1016,16 @@ socket.on('finalizar_subasta', () => {
     const subtextElWidget = document.getElementById('subtext-widget');
     if (subtextElWidget) subtextElWidget.textContent = "El sorteo/subasta termina en";
 });
+document.addEventListener("DOMContentLoaded", () => {
+    // Si esta página fue abierta como "widget", activa el modo widget
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("streamerId")) {
+        document.body.classList.add("widget-mode");
+        console.log("🟡 Modo widget activado");
+    } else {
+        console.log("🟢 Modo dashboard normal");
+    }
+});
     </script>
 </body>
 </html>
