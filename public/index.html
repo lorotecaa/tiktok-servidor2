@@ -883,17 +883,12 @@ function abrirWidget() {
         alert('Por favor, introduce el ID del Streamer primero.');
         return;
     }
-    
-    // 🛑 CRÍTICO: USA LA URL COMPLETA DEL SERVIDOR DE RENDER, NO window.location.origin
-    // Ejemplo (Asegúrate de que esta URL sea la correcta para tu proyecto):
-    const baseUrl = "https://tiktok-servidor2.onrender.com"; 
-    
-    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`; 
-    
-    // Abre la nueva ventana. Ahora cargará el contenido remoto correcto.
-    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580'); 
-}
 
+    const baseUrl = "https://tiktok-servidor2.onrender.com";
+    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`;
+    
+    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580');
+}
 /* ================================================== */
 /* 👑 BLOQUE ÚNICO PARA MOSTRAR GANADOR (Dashboard + Widget) 👑 */
 /* ================================================== */
