@@ -644,12 +644,11 @@ function conectarDashboard() {
             // 4. Emitir al servidor el *NUEVO TOTAL*
             // (El servidor lo retransmitirá, y socket.on("new_gift") lo reemplazará)
             socket.emit("nuevo_regalo", {
-                usuario: randomUser,
-                cantidad: nuevoTotal,
-                regalo: giftName,
-                // 👇 AÑADE ESTA LÍNEA 👇
-                avatar_url: `https://via.placeholder.com/30/555/FFFFFF?text=${randomUser.charAt(0)}`
-            });
+  usuario: randomUser,
+  cantidad: nuevoTotal,
+  regalo: giftName,
+  avatar_url: profilePictureUrl || "https://via.placeholder.com/40/555/FFFFFF?text=U"
+});
         }
         // 👆 FIN DE LA FUNCIÓN NUEVA 👆
 
@@ -835,7 +834,9 @@ function actualizarParticipantesUI() {
             <li>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span>${index + 1}.</span>
-                    <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=?'}"
+                    <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=U'}"
+     alt="avatar"
+     style="width:40px; height:40px; border-radius:50%;">
                          alt="avatar"
                          style="width:40px; height:40px; border-radius:50%;">
                     <span>${p.usuario}</span>
