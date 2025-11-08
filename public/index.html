@@ -703,7 +703,7 @@ function conectarDashboard() {
 
 // --- DETECCIÓN DE WIDGET O DASHBOARD ---
 const urlParams = new URLSearchParams(window.location.search);
-const pathIsWidget = window.location.search.includes('mode=widget');
+const pathIsWidget = window.location.pathname.includes('/widget');
 
 // Variables globales, solo se inicializan (no se llenan con DOM aquí)
 let streamerId = "ID_POR_DEFECTO";
