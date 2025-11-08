@@ -198,17 +198,12 @@
     margin: 20px 0;     /* Mantiene el espaciado vertical que ya tenías */
 }
 .widget-mode #widget-container {
-    /* * El 'display: none' en #widget-container debe ser sobrescrito aquí.
-     * Puedes usar 'flex' (como ya lo tienes en tu definición) o 'block'.
-     */
     display: flex !important; 
-    
-    /* Opcional: Para asegurar que el Widget cubra la ventana abierta */
     position: fixed; 
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100%; /* ¡CRÍTICO! */
+    height: 100%; /* ¡CRÍTICO! */
     margin: 0;
 }
     </style>
@@ -256,15 +251,12 @@
         <ul id="listaGanadores"></ul>
     </div> 
 
-    <div id="widget-container" style="display:none;">
-        
-        <div id="tiempoBox-widget">
-            <div id="tiempoRestante-widget">00:00</div>
-            <div id="subtext-widget">El sorteo/subasta termina en</div>
-        </div>
-        <div id="participantes-widget">
-            <ul id="listaParticipantes-widget"></ul>
-        </div>
+    <div id="widget-container">
+    <div id="tiempoBox-widget">...</div>
+    <div id="participantes-widget">
+        <ul id="listaParticipantes-widget"></ul>
+    </div>
+</div>
         
     </div>
     <div id="winner-popup" style="display: none;">
