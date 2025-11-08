@@ -109,12 +109,14 @@
             object-fit: cover; 
         }
         .username { 
-            color: #ecf0f1; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            max-width: 150px; 
-        }
+    color: #ecf0f1; 
+    
+    /* 🛑 CAMBIOS APLICADOS: Permitir que el texto fluya libremente */
+    white-space: normal; /* Permitir saltos de línea si es necesario */
+    overflow: visible; 
+    text-overflow: clip; /* Deshabilita los '...' */
+    max-width: none; /* Permite que el ancho sea el que necesite el nombre */
+}
         /* --- FIN: ESTILOS CORRECTOS --- */
         #winner-popup {
             display: none; /* Oculto por defecto */
