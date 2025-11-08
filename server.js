@@ -1,145 +1,107 @@
 // ===============================
-// 📦 SERVIDOR PRINCIPAL TIKTOK (CONECTADO CON TIKTOK-LIVE-CONNECTOR)
+// 🎯 TIKTOK SERVER - Conexión por Usuario dinámico
 // ===============================
-
-// Dependencias
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const path = require("path");
+const cors = require("cors");
 const { WebcastPushConnection } = require("tiktok-live-connector");
-require("dotenv").config();
 
-// ===============================
-// 🌐 CONFIGURACIÓN EXPRESS
-// ===============================
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
-const PORT = process.env.PORT || 10000;
-
-// Carpeta pública
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ===============================
-// ⚙️ CONEXIÓN A TIKTOK LIVE
-// ===============================
-const TIKTOK_USERNAME = process.env.TIKTOK_USERNAME || "@tu_usuario_tiktok";
-
-const tiktokLiveConnection = new WebcastPushConnection(TIKTOK_USERNAME, {
-  enableWebsocketUpgrade: true,
-  requestOptions: {
-    timeout: 10000,
-  },
-  disableEulerFallbacks: true // 👈 evita error de permiso con EulerStream
-});
-
-
-tiktokLiveConnection.connect().then((state) => {
-  console.log(`✅ Conectado a la sala de ${TIKTOK_USERNAME}`);
-}).catch((err) => {
-  console.error("❌ Error al conectar con TikTok:", err);
-});
-
-// 🎁 Evento de regalo recibido
-tiktokLiveConnection.on('gift', (data) => {
-  const giftData = {
-    userId: data.uniqueId,
-    nickname: data.nickname,
-    profilePictureUrl: data.profilePictureUrl,
-    diamondCount: data.diamondCount || 0,
-    giftName: data.giftName,
-    repeatCount: data.repeatCount,
-    streakable: data.streakable
-  };
-
-  console.log(`🎁 ${giftData.nickname} envió ${giftData.giftName} x${giftData.repeatCount}`);
-  io.emit("new_gift", giftData); // 🔁 Enviar a todos los clientes conectados
-});
-
-// 💬 Evento de mensaje en el chat
-tiktokLiveConnection.on('chat', (data) => {
-  io.emit("new_chat", {
-    user: data.uniqueId,
-    comment: data.comment
-  });
-});
-
-// ❤️ Evento de likes
-tiktokLiveConnection.on('like', (data) => {
-  io.emit("new_like", {
-    user: data.uniqueId,
-    likeCount: data.likeCount
-  });
-});
-
-// ===============================
-// ⚡ CONFIGURACIÓN SOCKET.IO
-// ===============================
-const VALID_STREAMER_IDS = [
-  "@yosoytoniu",
-  "soygabrielbeato",
-  "lorotecayt",
-  "otro_usuario_autorizado"
-];
-
-io.on("connection", (socket) => {
-  console.log("🟢 Cliente conectado:", socket.id);
-
-  socket.on("join_room", (data) => {
-    if (data && data.streamerId) {
-      const streamerId = data.streamerId;
-      if (VALID_STREAMER_IDS.includes(streamerId)) {
-        socket.join(streamerId);
-        console.log(`🔗 [${streamerId}] Cliente unido a la sala.`);
-      } else {
-        console.log(`❌ ERROR: ID Inválido (${streamerId}) intentó unirse.`);
-        socket.emit("id_invalido", {
-          streamerId: streamerId,
-          message: "ID no autorizado. Por favor, comunícate con el administrador."
-        });
-      }
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
     }
-  });
+});
 
-  socket.on("iniciar_subasta", (data) => {
-    console.log("🚀 Subasta iniciada");
-    io.emit("subasta_iniciada", data);
-  });
+app.use(cors());
+app.get("/", (req, res) => {
+    res.send("Servidor TikTok Live funcionando ✅");
+});
 
-  socket.on("sync_time", (time) => {
-    socket.broadcast.emit("update_time", time);
-  });
+// 💾 Guardar conexiones por streamerId
+const conexiones = {};
 
-  socket.on("finalizar_subasta", () => {
-    console.log("⏹️ Subasta finalizada.");
-    io.emit("subasta_finalizada");
-  });
+// 🧠 Función para iniciar conexión TikTok dinámica
+async function conectarTiktok(streamerId, tiktokUser) {
+    if (conexiones[streamerId]) {
+        console.log(`⚠️ Ya hay conexión para ${streamerId}`);
+        return;
+    }
 
-  socket.on("activar_alerta_snipe_visual", () => {
-    console.log("⚡ ALERTA SNIPE ACTIVADA");
-    io.emit("activar_alerta_snipe_visual");
-  });
+    const username = tiktokUser?.replace("@", "") || streamerId;
+    const tiktokConnection = new WebcastPushConnection(username);
 
-  socket.on("anunciar_ganador", (ganador) => {
-    console.log("🏆 Ganador:", ganador);
-    io.emit("anunciar_ganador", ganador);
-  });
+    console.log(`🎥 Conectando con TikTok Live de @${username}`);
 
-  socket.on("limpiar_listas", () => {
-    console.log("🧹 Limpiando listas...");
-    io.emit("limpiar_listas_clientes");
-  });
+    try {
+        await tiktokConnection.connect();
+        console.log(`✅ Conectado a la transmisión de @${username}`);
+    } catch (err) {
+        console.log(`❌ No se pudo conectar con @${username}`);
+        return;
+    }
+
+    conexiones[streamerId] = tiktokConnection;
+
+    // 🪙 Cuando llega un regalo
+    tiktokConnection.on("gift", (data) => {
+        const regalo = {
+            usuario: data.uniqueId,
+            cantidad: data.diamondCount || 1,
+            regalo: data.giftName || "Desconocido",
+            avatar_url: data.profilePictureUrl || "",
+            streamerId
+        };
+        console.log(`🎁 Nuevo regalo de ${regalo.usuario}: +${regalo.cantidad}`);
+        io.to(streamerId).emit("new_gift", regalo);
+    });
+
+    // 💬 Mensajes opcionales (por si quieres agregarlos)
+    tiktokConnection.on("chat", (msg) => {
+        io.to(streamerId).emit("new_chat", {
+            usuario: msg.uniqueId,
+            comentario: msg.comment
+        });
+    });
+
+    // ⚠️ Manejo de desconexión
+    tiktokConnection.on("disconnected", () => {
+        console.log(`⚠️ Desconectado de @${username}`);
+        delete conexiones[streamerId];
+    });
+}
+
+// ===============================
+// 🎮 SOCKET.IO
+// ===============================
+io.on("connection", (socket) => {
+    console.log("🟢 Nuevo cliente conectado.");
+
+    // 🧩 Unirse a una sala
+    socket.on("join_room", async ({ streamerId, tiktokUser }) => {
+        socket.join(streamerId);
+        console.log(`📡 Cliente unido a sala: ${streamerId}`);
+        io.to(streamerId).emit("mensaje_servidor", `🎥 Conectando con TikTok Live de @${tiktokUser}`);
+
+        // 🔥 Conectar TikTok dinámicamente
+        conectarTiktok(streamerId, tiktokUser);
+    });
+
+    // 🪙 Evento simulado desde el dashboard
+    socket.on("nuevo_regalo", (gift) => {
+        io.to(gift.streamerId).emit("new_gift", gift);
+    });
+
+    // 🕹️ Eventos de control
+    socket.on("iniciar_subasta", () => io.emit("subasta_iniciada"));
+    socket.on("finalizar_subasta", () => io.emit("subasta_finalizada"));
+    socket.on("anunciar_ganador", (g) => io.emit("ganador_anunciado", g));
+    socket.on("limpiar_listas", () => io.emit("limpiar_listas"));
 });
 
 // ===============================
-// 🚀 INICIAR SERVIDOR
-// ===============================
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-});
-
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
