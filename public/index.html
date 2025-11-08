@@ -884,13 +884,14 @@ function abrirWidget() {
         return;
     }
     
-    // CRÍTICO: Construir la URL completa y absoluta (protocolo + dominio + ruta)
-    // window.location.origin devuelve, por ejemplo: https://tiktok-servidor2.onrender.com
-    const baseUrl = "https://tiktok-servidor2.onrender.com"; // 🛑 Reemplaza con tu URL real
-    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`;
+    // 🛑 CRÍTICO: USA LA URL COMPLETA DEL SERVIDOR DE RENDER, NO window.location.origin
+    // Ejemplo (Asegúrate de que esta URL sea la correcta para tu proyecto):
+    const baseUrl = "https://tiktok-servidor2.onrender.com"; 
     
-    // Abrir la nueva ventana con la URL COMPLETA
-    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580');
+    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`; 
+    
+    // Abre la nueva ventana. Ahora cargará el contenido remoto correcto.
+    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580'); 
 }
 
 /* ================================================== */
