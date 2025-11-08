@@ -713,54 +713,49 @@ function conectarDashboard() {
     let tiktokUser = "USUARIO_POR_DEFECTO";
 
     if (isWidgetMode) {
-        console.log("🧩 Iniciando en modo WIDGET...");
+    console.log("🟣 Modo Widget activado correctamente.");
 
-        // Forzar modo widget
-        document.body.classList.add("widget-mode");
-        document.body.style.background = "transparent";
+    // Forzar estilo transparente y fondo oscuro
+    document.body.classList.add("widget-mode");
+    document.body.style.background = "rgba(0,0,0,0.6)";
+    document.body.style.color = "white";
+    document.body.style.display = "flex";
+    document.body.style.flexDirection = "column";
+    document.body.style.alignItems = "center";
+    document.body.style.justifyContent = "center";
+    document.body.style.height = "100vh";
+    document.body.style.margin = "0";
+    document.body.style.fontFamily = "sans-serif";
 
-        // Ocultar dashboard si existe
-        const mainDashboardContent = document.getElementById("main-dashboard-content");
-        if (mainDashboardContent) mainDashboardContent.style.display = "none";
+    // Oculta cualquier dashboard
+    const mainDashboardContent = document.getElementById("main-dashboard-content");
+    if (mainDashboardContent) mainDashboardContent.style.display = "none";
 
-        // Crear contenedor si no existe
-        let widgetContainer = document.getElementById("widget-container");
-        if (!widgetContainer) {
-            widgetContainer = document.createElement("div");
-            widgetContainer.id = "widget-container";
-            widgetContainer.style.display = "flex";
-            widgetContainer.style.justifyContent = "center";
-            widgetContainer.style.alignItems = "center";
-            widgetContainer.style.width = "100%";
-            widgetContainer.style.height = "100vh";
-            widgetContainer.style.background = "transparent";
-            widgetContainer.innerHTML = `
-                <ul id="listaParticipantes-widget" style="
-                    list-style:none;
-                    width: 90%;
-                    padding:0;
-                    color:white;
-                    font-size:18px;
-                    font-family:sans-serif;
-                ">
-                    <li>⏳ Esperando regalos...</li>
-                </ul>`;
-            document.body.appendChild(widgetContainer);
-        }
-
-        // Leer streamerId desde la URL
-        streamerId = urlParams.get("streamerId");
-        if (streamerId) {
-            socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" });
-            console.log(`✅ WIDGET unido a la sala de ${streamerId}`);
-        } else {
-            console.error("⚠️ El Widget no recibió el streamerId en la URL");
-        }
-
-    } else {
-        console.log("🎛️ Dashboard normal");
+    // Crea lista visible si no existe
+    let listaWidget = document.getElementById("listaParticipantes-widget");
+    if (!listaWidget) {
+        listaWidget = document.createElement("ul");
+        listaWidget.id = "listaParticipantes-widget";
+        listaWidget.style.listStyle = "none";
+        listaWidget.style.padding = "0";
+        listaWidget.style.width = "90%";
+        listaWidget.style.textAlign = "left";
+        listaWidget.style.fontSize = "18px";
+        listaWidget.innerHTML = "<li>⏳ Esperando regalos...</li>";
+        document.body.appendChild(listaWidget);
     }
 
+    // Lee streamerId desde URL
+    streamerId = urlParams.get("streamerId");
+    if (streamerId) {
+        socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" });
+        console.log(`✅ WIDGET unido a la sala de ${streamerId}`);
+    } else {
+        console.error("⚠️ El Widget no recibió el streamerId en la URL");
+    }
+} else {
+    console.log("🎛️ Dashboard normal");
+}
     // ===============================
     // 🎁 ESCUCHAR REGALOS EN TIEMPO REAL DESDE EL SERVIDOR
     // (Esto corre en AMBOS: Dashboard y Widget)
@@ -867,15 +862,15 @@ function actualizarParticipantesUI() {
 function abrirWidget() {
     const streamerIdInput = document.getElementById('idUnico');
     const streamerId = streamerIdInput ? streamerIdInput.value.trim() : '';
-    
+
     if (!streamerId) {
         alert('Por favor, introduce el ID del Streamer primero.');
         return;
     }
 
     const baseUrl = "https://tiktok-servidor2.onrender.com";
-    const widgetURL = `${baseUrl}/?mode=widget&streamerId=${streamerId}`;
-    
+    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`;
+
     window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580');
 }
 /* ================================================== */
