@@ -195,17 +195,12 @@ socket.on("subasta_terminada_total", () => {
     subastaActiva = false; // ✅ Ahora se pone en FALSE solo al final
     // Opcional: io.emit("subasta_terminada_total"); si el widget necesita saber esto
 });
-    // 🛑 IMPORTANTE: Se eliminó toda la lógica de cálculo y anuncio del ganador. 
-    // Esa tarea es ahora responsabilidad EXCLUSIVA de la función terminarTiempo() 
-    // en el lado del cliente (dashboard), asegurando que solo ocurra 
-    // después de que el tiempo extra (Snipe) haya terminado.
 
-  });
   socket.on("activar_alerta_snipe_visual", () => {
     console.log("⚡ ALERTA SNIPE ACTIVADA");
     io.emit("activar_alerta_snipe_visual");
   });
-
+});
  socket.on("anunciar_ganador", (ganador) => {
     console.log("🏆 Ganador:", ganador);
     // 🛑 El servidor RE-EMITE la señal a todos los clientes (incluyendo el widget)
