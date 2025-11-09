@@ -414,37 +414,45 @@ if (Array.isArray(participantes)) {
         }
         
         // --- LÓGICA DEL TEMPORIZADOR ---
-        function iniciarTimerLogic() {
-            let tiempoInput = document.getElementById("tiempo");
-            // Solo resetea si el tiempo es 0 o indefinido (inicio)
-            if (tiempoActual <= 0) {
-                 tiempoActual = parseInt(tiempoInput ? tiempoInput.value : 200); // Usar 200 como default si no hay input
-            }
+            function iniciarTimerLogic() {
+    let tiempoInput = document.getElementById("tiempo");
+    
+    // 1. Inicialización
+    if (tiempoActual <= 0) {
+        tiempoActual = parseInt(tiempoInput ? tiempoInput.value : 200); 
+    }
 
-
-            if (intervalo) clearInterval(intervalo);
+    // 2. Limpia cualquier intervalo anterior
+    if (intervalo) clearInterval(intervalo);
+    
+    intervalo = setInterval(() => {
+        
+        // A) Lógica de Cuenta Regresiva (Solo si NO está pausado y el tiempo es > 0)
+        if (!isPaused && tiempoActual > 0) {
+            tiempoActual--;
+            const formattedTime = formatTime(tiempoActual);
             
-            intervalo = setInterval(() => {
-                if (!isPaused && tiempoActual > 0) {
-                    tiempoActual--;
-                    const formattedTime = formatTime(tiempoActual);
-                    
-                    // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
-                    if (!document.body.classList.contains('widget-mode')) {
-                        socket.emit('sync_time', tiempoActual); 
-                    }
-                    
-                    // 2. Actualizamos el display LOCAL del dashboard
-                    if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
-
-                } else if (tiempoActual <= 0) {
-                     // Solo el dashboard detiene el tiempo
-                    if (!document.body.classList.contains('widget-mode')) {
-                        terminarTiempo();
-                    }
-                }
-            }, 1000);
+            // Sincronización y Actualización UI
+            if (!document.body.classList.contains('widget-mode')) {
+                socket.emit('sync_time', tiempoActual); 
+            }
+            if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
+        } 
+        
+        // 🛑 B) LÓGICA DE TERMINACIÓN (TIEMPO = 0) 🛑
+        // CRÍTICO: Este IF debe ser INDEPENDIENTE de la cuenta regresiva (A)
+        if (tiempoActual <= 0 && !document.body.classList.contains('widget-mode')) {
+            
+            // Detener el loop y liberar la variable
+            clearInterval(intervalo);
+            intervalo = null;
+            
+            // Llamar a la lógica de Snipe/finalización
+            terminarTiempo(); 
         }
+
+    }, 1000);
+}
 
         // --- FUNCIONES DE CONTROL ---
         function iniciar() {
