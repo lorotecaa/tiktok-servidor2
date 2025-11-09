@@ -301,6 +301,8 @@
         const listaGanadoresEl = document.getElementById('listaGanadores');
         const tiempoRestanteEl = document.getElementById('tiempoRestante');
         const logDonacionesEl = document.getElementById('logDonaciones');
+        const winnerPopup = document.getElementById('winner-popup');
+        const widgetContainer = document.getElementById('widget-container'); // Contenedor principal del Widget
         
         let tiempoActual = 0;
         let intervalo = null;
@@ -453,7 +455,42 @@ if (Array.isArray(participantes)) {
 
     }, 1000);
 }
+// Función para mostrar el popup del ganador (con animación)
+function showWinnerPopup(ganador) {
+    // 1. Oculta la tabla del widget para evitar superposición
+    document.getElementById('participantes-widget').style.display = 'none';
+    document.getElementById('tiempoBox-widget').style.display = 'none';
 
+    // 2. Muestra y anima el popup del ganador
+    winnerPopup.style.display = 'flex'; // Usar 'flex' para centrar
+    setTimeout(() => {
+        winnerPopup.style.opacity = 1;
+        document.getElementById('winner-content').style.transform = 'scale(1)';
+    }, 10); // Pequeño delay para iniciar transición
+
+    // 3. Poblar datos
+    document.querySelector('#winner-avatar img').src = ganador.avatar_url;
+    document.getElementById('winner-name').textContent = `@${ganador.usuario}`;
+    document.getElementById('winner-amount').textContent = `${ganador.cantidad}`; // La moneda 💎 está en el HTML/CSS
+}
+// Función para regresar a la vista de la tabla del widget
+function returnToWidgetTable() {
+    // 1. Inicia la animación de salida del popup
+    winnerPopup.style.opacity = 0;
+    document.getElementById('winner-content').style.transform = 'scale(0.7)';
+
+    // 2. Después de que la animación termine (ej: 500ms), oculta el popup
+    setTimeout(() => {
+        winnerPopup.style.display = 'none';
+
+        // 3. Muestra de nuevo los elementos principales del Widget
+        document.getElementById('participantes-widget').style.display = 'block';
+        document.getElementById('tiempoBox-widget').style.display = 'flex';
+        
+        // La tabla se refresca automáticamente porque el ganador permanece en 'participantes'
+        // hasta que se presione 'Iniciar'.
+    }, 500); 
+}
         // --- FUNCIONES DE CONTROL ---
        function iniciar() {
     if (!document.body.classList.contains('widget-mode')) { 
@@ -493,6 +530,17 @@ if (Array.isArray(participantes)) {
             // Alternativa si no tienes esa función, usa el ID del modal:
             const modalGanador = document.getElementById('modalGanador'); // Asumiendo este ID
             if (modalGanador) modalGanador.style.display = 'none';
+        }
+        // --- 🛑 NUEVA LÓGICA DE LIMPIEZA VISUAL DEL WIDGET 🛑 ---
+        // Esto usa las funciones que definimos para asegurar que la tabla del widget
+        // se muestre si estaba ocultando el popup del ganador.
+        if (typeof returnToWidgetTable === 'function') {
+            returnToWidgetTable(); 
+        } else {
+            // Si returnToWidgetTable() no está disponible, asegúrate de que al menos
+            // el popup del ganador del dashboard (que se usa en el widget) esté oculto:
+            const winnerPopup = document.getElementById('winner-popup');
+            if (winnerPopup) winnerPopup.style.display = 'none';
         }
         // 🛑 LIMPIEZA 4: CRÍTICA VISUAL (AÑADE ESTA LÍNEA) 🛑
 // Esto envía la orden al Widget de quitar el color rojo y el texto de alerta.
@@ -990,7 +1038,7 @@ socket.on("anunciar_ganador", (ganador) => {
 
     if (!isWidget) {
         // ===========================
-        // 🖥️ MOSTRAR EN DASHBOARD
+        // 🖥️ MOSTRAR EN DASHBOARD (MANTENER LÓGICA EXISTENTE)
         // ===========================
         console.log("🎬 Mostrando popup de ganador en el Dashboard:", ganador.usuario);
 
@@ -1012,70 +1060,34 @@ socket.on("anunciar_ganador", (ganador) => {
             });
         });
 
+        // 🛑 CRÍTICO EN DASHBOARD: El dashboard debe limpiar las listas inmediatamente.
         setTimeout(() => {
             popup.style.opacity = '0';
             contentEl.style.transform = 'scale(0.7)';
             setTimeout(() => {
                 popup.style.display = 'none';
-                socket.emit("limpiar_listas");
+                socket.emit("limpiar_listas"); // El Dashboard manda a limpiar al servidor.
             }, 500);
         }, 10000);
 
     } else {
-        // ===========================
-        // 📺 MOSTRAR EN WIDGET (TIKTOK STUDIO)
-        // ===========================
-        console.log("👑 Mostrando ganador en el widget:", ganador.usuario);
+        // ===========================
+        // 📺 MOSTRAR EN WIDGET (USANDO EL POPUP Y LAS NUEVAS FUNCIONES)
+        // ===========================
+        console.log("👑 Mostrando ganador en el widget:", ganador.usuario);
 
-        // 1️⃣ Limpiar el ranking
-        const rankingList = document.getElementById("listaParticipantes-widget");
-        if (rankingList) rankingList.innerHTML = "";
-        participantes = {}; // ✅ ¡Asegúrate de que sea un OBJETO vacío!
+        // 1. Llama a la función que muestra y puebla el popup del ganador
+        showWinnerPopup(ganador); 
 
-        // 2️⃣ Crear un banner flotante encima del widget
-        // ... (el resto de tu lógica para crear el container SÍ debería funcionar)
+        const duracionAnuncio = 10000; // 10 segundos de visibilidad, igual que en Dashboard.
 
-        // 2️⃣ Crear un banner flotante encima del widget
-        const container = document.createElement("div");
-        container.id = "widget-winner-popup";
-        container.style.position = "fixed";
-        container.style.top = "10%";
-        container.style.left = "50%";
-        container.style.transform = "translateX(-50%)";
-        container.style.zIndex = "9999";
-        container.style.background = "rgba(0,0,0,0.85)";
-        container.style.color = "#fff";
-        container.style.padding = "25px 50px";
-        container.style.borderRadius = "20px";
-        container.style.textAlign = "center";
-        container.style.fontSize = "1.6em";
-        container.style.backdropFilter = "blur(6px)";
-        container.style.boxShadow = "0 0 20px rgba(255, 215, 0, 0.8)";
-        container.style.animation = "popIn 0.4s ease";
-
-        container.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
-                <img src="${ganador.avatar_url || 'https://via.placeholder.com/60/000/fff?text=?'}"
-                     style="width:60px; height:60px; border-radius:50%; border:3px solid gold;">
-                <div>
-                    <div style="font-weight:bold; color:#FFD700;">🏆 ¡GANADOR DE LA SUBASTA! 🏆</div>
-                    <div>${ganador.usuario}</div>
-                    <div style="font-size:1.2em;">${ganador.cantidad} 🪙</div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(container);
-
-        // 3️⃣ Quitar banner después de 10 segundos
+        // 2. Después del tiempo de anuncio, llama a la función para regresar a la tabla
         setTimeout(() => {
-            container.style.transition = "opacity 0.5s ease";
-            container.style.opacity = "0";
-            setTimeout(() => {
-                container.remove();
-                socket.emit("limpiar_listas");
-            }, 500);
-        }, 10000);
+            returnToWidgetTable(); // Esto oculta el popup y vuelve a mostrar la tabla/tiempo.
+            
+            // ⚠️ IMPORTANTE: NO LLAMAMOS A socket.emit("limpiar_listas") AQUÍ.
+            // El ganador se queda visible en la lista del widget hasta que se inicia la nueva subasta.
+        }, duracionAnuncio);
     }
 });
 // **Y luego, tu listener debe estar después de la declaración:**
