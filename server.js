@@ -178,7 +178,16 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("update_time", time);
   });
 
+socket.on("finalizar_subasta", () => {
+    console.log("⏹️ Subasta finalizada (Regalos detenidos).");
+    subastaActiva = false; 
+    io.emit("subasta_finalizada");
 
+    // 🛑 IMPORTANTE: Se eliminó toda la lógica de cálculo y anuncio del ganador. 
+    // Esa tarea es ahora responsabilidad EXCLUSIVA de la función terminarTiempo() 
+    // en el lado del cliente (dashboard), asegurando que solo ocurra 
+    // después de que el tiempo extra (Snipe) haya terminado.
+  });
   socket.on("activar_alerta_snipe_visual", () => {
     console.log("⚡ ALERTA SNIPE ACTIVADA");
     io.emit("activar_alerta_snipe_visual");
