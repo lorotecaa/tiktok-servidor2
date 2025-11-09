@@ -178,23 +178,6 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("update_time", time);
   });
 
-  socket.on("finalizar_subasta", () => {
-    console.log("⏹️ Subasta finalizada.");
-    subastaActiva = false; 
-    io.emit("subasta_finalizada");
-
-    // 🛑 NUEVO CÓDIGO CRÍTICO: Calcular y Anunciar al Ganador
-    const ganador = calcularGanador(participantes);
-
-    // Si hay un ganador, emite la señal que el cliente está esperando
-    if (ganador) {
-        console.log(`🏆 Ganador calculado: ${ganador.usuario} con ${ganador.cantidad} diamantes.`);
-        io.emit("anunciar_ganador", ganador);
-    } else {
-        console.log("⚠️ No se encontró ganador porque no hubo participantes.");
-        io.emit("anunciar_ganador", null); 
-    }
-  });
 
   socket.on("activar_alerta_snipe_visual", () => {
     console.log("⚡ ALERTA SNIPE ACTIVADA");
