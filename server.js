@@ -196,10 +196,32 @@ socket.on("finalizar_subasta", () => {
 
     io.emit("subasta_finalizada"); 
 });
+// server.js - Cerca de la línea 193
 socket.on("subasta_terminada_total", () => {
     console.log("🛑 Subasta y tiempo extra FINALIZADOS. Deteniendo conteo.");
-    subastaActiva = false; // ✅ Ahora se pone en FALSE solo al final
-    // Opcional: io.emit("subasta_terminada_total"); si el widget necesita saber esto
+    subastaActiva = false; 
+
+    // 1. 🥇 CALCULAR GANADOR
+    const ganador = calcularGanador(participantes);
+    
+    if (ganador) {
+        // 2. 🗑️ DEJAR SÓLO AL GANADOR EN LA LISTA GLOBAL
+        // Creamos una nueva lista que solo contiene al ganador (usando su ID como clave)
+        participantes = {
+            [ganador.userId]: ganador
+        };
+
+        // 3. 📣 ANUNCIAR Y NOTIFICAR:
+        // El dashboard usará esto para mostrar la animación, y el widget para el 'popup'.
+        io.emit("anunciar_ganador", ganador); 
+        
+        // 4. 🖼️ ACTUALIZAR LISTA:
+        // ¡CRÍTICO! Enviamos la nueva lista (que solo tiene al ganador) a todos los clientes.
+        io.emit("update_participantes", participantes);
+        
+    } else {
+        console.log("⚠️ No hubo participantes con donaciones. No se anuncia ganador.");
+    }
 });
 
   socket.on("activar_alerta_snipe_visual", () => {
@@ -219,8 +241,16 @@ socket.on("desactivar_alerta_snipe_visual", () => {
 });
   socket.on("limpiar_listas", () => {
     console.log("🧹 Limpiando listas...");
-    io.emit("limpiar_listas_clientes");
-  });
+    
+    // 🛑 CRÍTICO: VACÍAR LA LISTA GLOBAL DEL SERVIDOR
+    participantes = {}; 
+    
+    // Notificar a los clientes que la lista está vacía
+    io.emit("update_participantes", participantes); 
+    
+    // La línea io.emit("limpiar_listas_clientes"); YA NO ES NECESARIA, 
+    // ya que el cliente debe escuchar "update_participantes"
+});
 });
 // ===============================
 // 🚀 INICIAR SERVIDOR
