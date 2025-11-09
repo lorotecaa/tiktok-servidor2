@@ -155,50 +155,7 @@ io.on("connection", (socket) => {
     console.log("⏹️ Subasta finalizada.");
     io.emit("subasta_finalizada");
   });
-  // 🎁 Evento: regalo recibido
-      tiktokConn.on("gift", (data) => {
-        
-        // 🛑 FILTRO CRÍTICO: Ignorar las repeticiones para contar solo el evento final
-        if (data.repeatEnd === false && data.giftType !== 1) {
-            // Si no es el final de una racha o un regalo de un solo tiro, lo ignoramos.
-            return; 
-        }
 
-        const userId = data.uniqueId;
-        const diamantes = data.diamondCount || 0;
-        
-        // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
-        if (diamantes > 0) {
-            if (participantes[userId]) {
-                // Existe: acumular
-                participantes[userId].cantidad += diamantes;
-            } else {
-                // Nuevo: crear
-                participantes[userId] = {
-                    userId: userId,
-                    usuario: data.nickname,
-                    cantidad: diamantes,
-                    avatar_url: data.profilePictureUrl
-                };
-            }
-        }
-
-        console.log(`🎁 [${streamerId}] ${data.nickname} envió ${data.giftName} - Total acumulado: ${participantes[userId].cantidad || diamantes} 💎`);
-        
-        // 2. Notificar al cliente: Enviar la lista de participantes procesada
-        io.to(streamerId).emit("update_participantes", participantes);
-        
-        // 3. Log para el dashboard (para el log visual de new_gift en el cliente)
-        io.to(streamerId).emit("new_gift", {
-          userId: userId,
-          nickname: data.nickname,
-          giftName: data.giftName,
-          diamondCount: diamantes 
-        });
-
-        // 4. Lógica de Snipe (Si aplica: si el tiempo es bajo y hay donación, reinicia el tiempo)
-        // ...
-      });
   socket.on("activar_alerta_snipe_visual", () => {
     console.log("⚡ ALERTA SNIPE ACTIVADA");
     io.emit("activar_alerta_snipe_visual");
