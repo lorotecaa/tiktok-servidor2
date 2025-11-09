@@ -531,57 +531,60 @@ function conectarDashboard() {
             intervalo = null; 
         }
 
-        // 3. Avisa a todos que el tiempo (y la subasta) se acabó
-        socket.emit('finalizar_subasta'); // Avisa al servidor que no acepte más regalos
-        socket.emit('sync_time', 0); // Envía '0' a los widgets
+        // 3. Avisa a todos que el tiempo (y la subasta) se acabó (Temporalmente)
+        socket.emit('finalizar_subasta'); 
+        socket.emit('sync_time', 0); 
         tiempoActual = 0; 
         if (document.getElementById('tiempoRestante')) {
             document.getElementById('tiempoRestante').textContent = formatTime(0);
         }
 
         // 4. Revisa si hay que activar el SNIPE
-        // (Nota: cambié el default de 15 a 0 para más seguridad)
         const tiempoSnipe = parseInt(document.getElementById("tiempoSnipe").value) || 0;
 
+        // 🟢 LÓGICA CRÍTICA DEL SNIPE:
         if (!snipeActivado && tiempoSnipe > 0) {
-            // A) AÚN QUEDA EL SNIPE
-            snipeActivado = true; // Marcamos que el snipe ya se usó
+            // A) EL TIEMPO PRINCIPAL TERMINÓ, PERO FALTA EL SNIPE
+            snipeActivado = true; // ⬅️ Bandera CRÍTICA: marca que ya usamos el snipe
+            
             logDonacionesEl.innerHTML += `<p style="color: yellow;">⚡ Modo SNIPE activado (${tiempoSnipe}s extra)</p>`;
-
-            // Avisamos a los widgets del nuevo tiempo
             socket.emit("iniciar_snipe_cliente", tiempoSnipe);
-
-            // 🛑 NUEVA EMISIÓN: Avisamos a los Widgets que inicien la ALERTA ROJA 🛑
-            socket.emit("activar_alerta_snipe_visual"); // <--- AÑADE ESTA LÍNEA
+            socket.emit("activar_alerta_snipe_visual"); 
 
             // Reiniciamos el temporizador local solo con el tiempo de snipe
             tiempoActual = tiempoSnipe;
-            iniciarTimerLogic();
+            iniciarTimerLogic(); // ⬅️ REINICIAMOS: EL GANADOR NO SE ANUNCIA AQUÍ
 
         } 
         else {
-            // B) NO HAY SNIPE (o el snipe ya terminó)
-            // ¡Aquí es donde ocurre la finalización automática!
-
+            // B) EL TIEMPO DE SNIPE (O EL TIEMPO REGULAR SIN SNIPE) TAMBIÉN TERMINÓ
+            
+            // 5. ANUNCIO FINAL Y LIMPIEZA
             if (snipeActivado) {
                 logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (post-snipe).</p>`;
             } else {
                 logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (sin snipe).</p>`;
             }
 
-            // --- INICIO DE LA LÓGICA MOVIDA DESDE 'FINALIZAR' ---
-            if (participantes.length > 0) {
-                const ganador = participantes[0]; // El primer elemento ya está ordenado
-                ganadoresHistorial.unshift(ganador); // Añadir al principio del historial
+            // --- LÓGICA DE GANADOR CORREGIDA (SOLO SE EJECUTA AQUÍ) ---
+            const participantesArray = Object.values(participantes);
+            
+            if (participantesArray.length > 0) {
+                participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad)); 
+                
+                const ganador = participantesArray[0]; 
+                ganadoresHistorial.unshift(ganador); 
                 logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
                 actualizarGanadoresUI();
                 socket.emit("anunciar_ganador", ganador);
+                
             } else {
-                 logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
-            }
-    }
+                logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
+            }
+            // --- FIN LÓGICA DE GANADOR ---
+        }
+    }
 }
-} 
         function finalizar() {
     // 1. Esta función solo debe correr en el Dashboard (el "Maestro")
     if (!document.body.classList.contains('widget-mode')) {
