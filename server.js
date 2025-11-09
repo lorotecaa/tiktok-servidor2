@@ -38,7 +38,75 @@ const conexionesTikTok = {}; // Guardará conexiones por streamerId
 let participantes = {};
 let subastaActiva = false;
 
+function configurarEventosTikTok(tiktokConn, streamerId) {
 
+    // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
+    tiktokConn.on("gift", (data) => {
+        
+        // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
+        if (subastaActiva === false) { 
+            // Opcional: puedes dejar un console.log aquí para debug
+            return; // Detiene la ejecución inmediatamente
+        }
+
+        // 🛑 FILTRO CRÍTICO 2: FILTRO DE REPETICIÓN (Bug TikFinity)
+        if (data.repeatEnd === false && data.repeatCount > 1) {
+            // Si la racha aún no ha terminado Y se está repitiendo, ignoramos
+            console.log(`[IGNORADO] Regalo repetido: ${data.giftName}`);
+            return; 
+        }
+
+        const userId = data.uniqueId;
+        const diamantes = data.diamondCount || 0;
+        
+        // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
+        if (diamantes > 0) {
+            if (participantes[userId]) {
+                // Existe: acumular
+                participantes[userId].cantidad += diamantes;
+            } else {
+                // Nuevo: crear
+                participantes[userId] = {
+                    userId: userId,
+                    usuario: data.nickname,
+                    cantidad: diamantes,
+                    avatar_url: data.profilePictureUrl
+                };
+            }
+        }
+
+        console.log(`🎁 [${streamerId}] ${data.nickname} envió ${data.giftName} - Total acumulado: ${participantes[userId]?.cantidad || diamantes} 💎`);
+        
+        // 2. Notificar al cliente: Enviar la lista de participantes procesada
+        io.to(streamerId).emit("update_participantes", participantes); // <-- ¡CRÍTICO para tu Widget!
+
+        // 3. Log para el dashboard (El cliente aún escucha 'new_gift' para el log visual)
+        io.to(streamerId).emit("new_gift", {
+            userId: userId,
+            nickname: data.nickname,
+            giftName: data.giftName,
+            diamondCount: diamantes 
+        });
+        
+        // 4. Lógica de Snipe...
+    });
+
+    // 💬 Evento: mensaje en el chat
+    tiktokConn.on("chat", (data) => {
+        io.to(streamerId).emit("new_chat", {
+            user: data.uniqueId,
+            comment: data.comment
+        });
+    });
+
+    // ❤️ Evento: likes
+    tiktokConn.on("like", (data) => {
+        io.to(streamerId).emit("new_like", {
+            user: data.uniqueId,
+            likeCount: data.likeCount
+        });
+    });
+}
 // 🛑 AÑADIR ESTA FUNCIÓN AQUÍ
 function calcularGanador(listaParticipantes) {
     const participantesArray = Object.values(listaParticipantes);
@@ -58,103 +126,38 @@ io.on("connection", (socket) => {
   console.log("🟢 Cliente conectado:", socket.id);
 
   socket.on("join_room", async (data) => {
-    const streamerId = data?.streamerId?.replace("@", "");
-    if (!streamerId) return;
+        const streamerId = data?.streamerId?.replace("@", "");
+        if (!streamerId) return;
 
-    console.log(`📡 Cliente unido a sala: ${streamerId}`);
-    socket.join(streamerId);
+        console.log(`📡 Cliente unido a sala: ${streamerId}`);
+        socket.join(streamerId);
 
-    // Si no existe una conexión activa para este streamer, crearla
-    if (!conexionesTikTok[streamerId]) {
-      console.log(`🎥 Conectando con TikTok Live de @${streamerId}`);
+        // Si no existe una conexión activa para este streamer, crearla
+        if (!conexionesTikTok[streamerId]) {
+            console.log(`🎥 Conectando con TikTok Live de @${streamerId}`);
 
-      const tiktokConn = new WebcastPushConnection(streamerId, {
-        enableWebsocketUpgrade: true,
-        requestOptions: { timeout: 10000 },
-        disableEulerFallbacks: true
-      });
+            const tiktokConn = new WebcastPushConnection(streamerId, {
+                enableWebsocketUpgrade: true,
+                requestOptions: { timeout: 10000 },
+                disableEulerFallbacks: true
+            });
 
-      try {
-        await tiktokConn.connect();
-        console.log(`✅ Conectado a la transmisión de @${streamerId}`);
-      } catch (err) {
-        console.error(`❌ Error conectando con @${streamerId}:`, err);
-        socket.emit("error_conexion", { message: "No se pudo conectar al Live." });
-        return;
-      }
-
-      // Guardar conexión
-      conexionesTikTok[streamerId] = tiktokConn;
-
-      // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
-      tiktokConn.on("gift", (data) => {
-        
-        // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
-        if (subastaActiva === false) { 
-            // Opcional: puedes dejar un console.log aquí para debug
-            return; // Detiene la ejecución inmediatamente
-        }
-
-        // 🛑 FILTRO CRÍTICO 2: FILTRO DE REPETICIÓN (Bug TikFinity)
-        if (data.repeatEnd === false && data.repeatCount > 1) {
-    // Si la racha aún no ha terminado Y se está repitiendo, ignoramos
-    console.log(`[IGNORADO] Regalo repetido: ${data.giftName}`);
-    return; 
-}
-
-        const userId = data.uniqueId;
-        const diamantes = data.diamondCount || 0;
-        
-        // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
-        if (diamantes > 0) {
-            if (participantes[userId]) {
-                // Existe: acumular
-                participantes[userId].cantidad += diamantes;
-            } else {
-                // Nuevo: crear
-                participantes[userId] = {
-                    userId: userId,
-                    usuario: data.nickname,
-                    cantidad: diamantes,
-                    avatar_url: data.profilePictureUrl
-                };
+            try {
+                await tiktokConn.connect();
+                console.log(`✅ Conectado a la transmisión de @${streamerId}`);
+            } catch (err) {
+                console.error(`❌ Error conectando con @${streamerId}:`, err);
+                socket.emit("error_conexion", { message: "No se pudo conectar al Live." });
+                return;
             }
-        }
 
-        console.log(`🎁 [${streamerId}] ${data.nickname} envió ${data.giftName} - Total acumulado: ${participantes[userId]?.cantidad || diamantes} 💎`);
-        
-        // 2. Notificar al cliente: Enviar la lista de participantes procesada
-        io.to(streamerId).emit("update_participantes", participantes); // <-- ¡CRÍTICO para tu Widget!
+            // Guardar conexión
+            conexionesTikTok[streamerId] = tiktokConn;
 
-        // 3. Log para el dashboard (El cliente aún escucha 'new_gift' para el log visual)
-        io.to(streamerId).emit("new_gift", {
-          userId: userId,
-          nickname: data.nickname,
-          giftName: data.giftName,
-          diamondCount: diamantes 
-        });
-        
-        // 4. Lógica de Snipe...
-      });
-
-      // 💬 Evento: mensaje en el chat
-      tiktokConn.on("chat", (data) => {
-        io.to(streamerId).emit("new_chat", {
-          user: data.uniqueId,
-          comment: data.comment
-        });
-      });
-
-      // ❤️ Evento: likes
-      tiktokConn.on("like", (data) => {
-        io.to(streamerId).emit("new_like", {
-          user: data.uniqueId,
-          likeCount: data.likeCount
-        });
-      });
-    }
-  });
-
+            // 🛑 LLAMADA CRÍTICA: Se configura el event listener UNA SOLA VEZ
+            configurarEventosTikTok(tiktokConn, streamerId);
+}
+    });
   // ===============================
   // ⚡ EVENTOS DE SUBASTA
   // ===============================
