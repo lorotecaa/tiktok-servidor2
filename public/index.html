@@ -305,7 +305,10 @@
         let subastaActiva = false;
         let isSnipeModeVisual = false;
         let isConnectedValid = false;
-
+// 🛑 SOLUCIÓN DE INYECCIÓN SEGURA PARA CORREGIR LA DECLARACIÓN
+if (Array.isArray(participantes)) {
+    participantes = {}; // Forzamos a que sea un objeto vacío
+}
         // 👇 INICIO: AÑADIDO BLOQUE (PROTECCIÓN ANTI-DUPLICADOS) 👇
         const processedGiftIds = new Set();
         setInterval(() => {
@@ -1002,11 +1005,12 @@ socket.on("anunciar_ganador", (ganador) => {
         }, 10000);
     }
 });
+// **Y luego, tu listener debe estar después de la declaración:**
 socket.on("update_participantes", (listaActualizada) => {
-    // 1. Guardar la lista actualizada
+    // Sobrescribir la variable global declarada arriba
     participantes = listaActualizada; 
     
-    // 2. Redibujar la interfaz
+    // Llamar a la función
     actualizarParticipantesUI(); 
 });
 /* Animación del popup */
