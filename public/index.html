@@ -451,7 +451,7 @@ if (Array.isArray(participantes)) {
         
         if (!streamerIdActual) {
             alert("⚠️ ERROR: Debes escribir el ID Único (para Widget) antes de iniciar la subasta.");
-            // ... (log) ...
+            logDonacionesEl.innerHTML += `<p style="color: red;">🛑 ERROR: ID Único no especificado. No se puede iniciar la subasta.</p>`;
             return; 
         }
         
@@ -466,19 +466,24 @@ if (Array.isArray(participantes)) {
         
         // --- Lógica de inicio (SOLO se ejecuta si isConnectedValid es true) ---
         
-        // 🟢 CORRECCIÓN CRÍTICA: LEER EL TIEMPO INICIAL EN SEGUNDOS
+        // 🟢 CORRECCIÓN FINAL: LEER Y ASIGNAR EL TIEMPO DESDE EL INPUT
         const tiempoInputEl = document.getElementById('tiempoInicialSegundos'); // ⬅️ ⚠️ VERIFICA ESTE ID EN TU HTML
-        const tiempoInicial = parseInt(tiempoInputEl?.value) || 10; // Usar el valor del input, o 10 segundos por defecto.
+        const tiempoInicial = parseInt(tiempoInputEl?.value); 
+
+        // CRÍTICO: VALIDACIÓN DE TIEMPO
+        if (isNaN(tiempoInicial) || tiempoInicial <= 0) {
+            alert("⚠️ ERROR: El 'Tiempo inicial' debe ser un número positivo.");
+            return;
+        }
 
         snipeActivado = false; 
         subastaActiva = true; 
         logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda (${tiempoInicial} segundos)...</p>`;
         
-        // Si el servidor valida el ID y llegamos aquí, entonces enviamos el evento
         socket.emit("iniciar_subasta"); 
         
         isPaused = false; 
-        tiempoActual = tiempoInicial; // ⬅️ ¡CORRECCIÓN! Usamos el valor del input (ej. 10).
+        tiempoActual = tiempoInicial; // ⬅️ ¡USA EL VALOR DIRECTO DEL INPUT!
 
         // Reseteo de participantes y UI
         participantes = {};
