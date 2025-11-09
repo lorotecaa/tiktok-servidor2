@@ -586,7 +586,7 @@ function conectarDashboard() {
         } 
         // 🛑 ELSE CRÍTICO: SOLO ENTRA AQUÍ SI EL SNIPE YA TERMINÓ O NO EXISTÍA 🛑
         else {
-            // B) NO HAY SNIPE (o el snipe ya terminó)
+            // B) LÓGICA DE FINALIZACIÓN Y GANADOR
             
             if (snipeActivado) {
                 logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (post-snipe).</p>`;
@@ -594,8 +594,8 @@ function conectarDashboard() {
                 logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (sin snipe).</p>`;
             }
 
-            // --- LÓGICA DE ANUNCIAR GANADOR (SOLO SE EJECUTA DESPUÉS DEL TIEMPO EXTRA) ---
-            const participantesArray = Object.values(participantes); // Conversión a array
+            // --- LÓGICA DE ANUNCIAR GANADOR ---
+            const participantesArray = Object.values(participantes); 
             
             if (participantesArray.length > 0) {
                 participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad)); 
@@ -604,10 +604,15 @@ function conectarDashboard() {
                 ganadoresHistorial.unshift(ganador);
                 logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
                 actualizarGanadoresUI();
-                socket.emit("anunciar_ganador", ganador); // ¡ANUNCIAR EL GANADOR FINAL!
+                socket.emit("anunciar_ganador", ganador);
             } else {
                 logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
             }
+            
+            // 🛑 ÚLTIMO PASO CRÍTICO DE LIMPIEZA
+            // NO importa si hubo ganador o no, el SNIPE DEBE REINICIARSE.
+            snipeActivado = false; 
+            subastaActiva = false; // Es buena práctica reiniciarla aquí también.
         }
     }
 }
