@@ -384,15 +384,19 @@ if (Array.isArray(participantes)) {
     
     // 🛑 ESCRITURA DE TOTALES
     if (!isWidgetMode) {
-    // ¡Buscamos los elementos de nuevo aquí, eliminando el conflicto de la const global!
-    const totalParticipantesElLocal = document.getElementById('totalParticipantes');
-    const totalDiamantesElLocal = document.getElementById('totalDiamantes');
+    // 🛑 USAMOS document.querySelector para buscar el elemento con el ID
+    const totalParticipantesEl = document.querySelector('#totalParticipantes');
+    const totalDiamantesEl = document.querySelector('#totalDiamantes');
     
-    if (totalParticipantesElLocal) {
-        totalParticipantesElLocal.textContent = participantesArray.length;
+    // Si aún así no funciona (lo cual es raro):
+    // Puedes intentar buscar por el span dentro del div.totales
+    // const totalParticipantesEl = document.querySelector('.totales #totalParticipantes');
+    
+    if (totalParticipantesEl) {
+        totalParticipantesEl.textContent = participantesArray.length;
     }
-    if (totalDiamantesElLocal) {
-        totalDiamantesElLocal.textContent = totalDiamantes;
+    if (totalDiamantesEl) {
+        totalDiamantesEl.textContent = totalDiamantes;
     }
 }
 }
