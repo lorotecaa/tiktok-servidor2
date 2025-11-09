@@ -706,57 +706,62 @@ function conectarDashboard() {
     });
 
     // --- DETECCIÓN DE WIDGET O DASHBOARD ---
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentPath = window.location.pathname || "";
-    const isWidgetMode = window.location.search.includes("mode=widget") || currentPath.includes("/widget");
+const urlParams = new URLSearchParams(window.location.search);
 
-    // Variables globales
-    let streamerId = "ID_POR_DEFECTO";
-    let tiktokUser = "USUARIO_POR_DEFECTO";
+// Detecta si la URL es /widget O si tiene ?mode=widget
+const currentPath = window.location.pathname || "";
+const isWidgetMode = window.location.search.includes("mode=widget") || currentPath.includes("/widget");
 
-    if (isWidgetMode) {
-    console.log("🟣 Modo Widget activado correctamente.");
+// Variables globales (se llenarán dependiendo del modo)
+let streamerId = "";
+let tiktokUser = "";
 
-    // Forzar estilo transparente y fondo oscuro
+if (isWidgetMode) {
+    // ===============================
+    // 🏃 MODO WIDGET
+    // ===============================
+    console.log("🟣 Modo Widget activado.");
+
+    // 1. APLICA LA CLASE (Tu CSS se encargará de los estilos)
     document.body.classList.add("widget-mode");
-    document.body.style.background = "rgba(0,0,0,0.6)";
-    document.body.style.color = "white";
-    document.body.style.display = "flex";
-    document.body.style.flexDirection = "column";
-    document.body.style.alignItems = "center";
-    document.body.style.justifyContent = "center";
-    document.body.style.height = "100vh";
-    document.body.style.margin = "0";
-    document.body.style.fontFamily = "sans-serif";
 
-    // Oculta cualquier dashboard
+    // 2. OCULTA EL DASHBOARD (Tu CSS ya lo hace, pero forzamos)
     const mainDashboardContent = document.getElementById("main-dashboard-content");
     if (mainDashboardContent) mainDashboardContent.style.display = "none";
 
-    // Crea lista visible si no existe
-    let listaWidget = document.getElementById("listaParticipantes-widget");
-    if (!listaWidget) {
-        listaWidget = document.createElement("ul");
-        listaWidget.id = "listaParticipantes-widget";
-        listaWidget.style.listStyle = "none";
-        listaWidget.style.padding = "0";
-        listaWidget.style.width = "90%";
-        listaWidget.style.textAlign = "left";
-        listaWidget.style.fontSize = "18px";
-        listaWidget.innerHTML = "<li>⏳ Esperando regalos...</li>";
-        document.body.appendChild(listaWidget);
+    // 3. MUESTRA EL CONTENEDOR DEL WIDGET (El que SÍ existe en tu HTML)
+    const widgetContainer = document.getElementById("widget-container");
+    if (widgetContainer) {
+        widgetContainer.style.display = 'flex'; // O 'block', según tu diseño
+    } else {
+        console.error("CRÍTICO: No se encontró #widget-container en el HTML.");
     }
 
-    // Lee streamerId desde URL
-    streamerId = urlParams.get("streamerId");
+    // 4. LEE EL ID DE LA URL Y CONECTA
+    streamerId = urlParams.get("streamerId"); // Asegúrate que tu Step 2 envía 'streamerId'
     if (streamerId) {
         socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" });
         console.log(`✅ WIDGET unido a la sala de ${streamerId}`);
     } else {
         console.error("⚠️ El Widget no recibió el streamerId en la URL");
     }
+
 } else {
+    // ===============================
+    // 🖥️ MODO DASHBOARD
+    // ===============================
     console.log("🎛️ Dashboard normal");
+
+    // Oculta el contenedor del widget (por si acaso)
+    const widgetContainer = document.getElementById("widget-container");
+    if (widgetContainer) widgetContainer.style.display = "none";
+
+    // 5. LÓGICA DEL DASHBOARD (Lee los inputs)
+    const idUnicoEl = document.getElementById('idUnico');
+    const tiktokUserEl = document.getElementById('tiktokUser');
+    
+    // (Tu lógica para leer los inputs y conectar a TikTok va aquí)
+    // ...
 }
     // ===============================
     // 🎁 ESCUCHAR REGALOS EN TIEMPO REAL DESDE EL SERVIDOR
@@ -862,18 +867,24 @@ function actualizarParticipantesUI() {
 }
 
 function abrirWidget() {
-    const streamerIdInput = document.getElementById('idUnico');
+    // 1. Lee el ID del input (id="idUnico")
+    const streamerIdInput = document.getElementById('idUnico'); 
     const streamerId = streamerIdInput ? streamerIdInput.value.trim() : '';
     
     if (!streamerId) {
         alert('Por favor, introduce el ID del Streamer primero.');
         return;
     }
-
-    const baseUrl = "https://tiktok-servidor2.onrender.com";
-    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`;
     
-    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580');
+    // 2. 🛑 CRÍTICO: USA LA URL COMPLETA DE TU SERVIDOR DE RENDER
+    // Reemplaza esto con tu URL real si es diferente
+    const baseUrl = "https://tiktok-servidor2.onrender.com"; 
+    
+    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`; 
+    
+    // 3. Abre la nueva ventana
+    console.log("Abriendo Widget en:", widgetURL); // Revisa la consola del Dashboard
+    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580'); 
 }
 /* ================================================== */
 /* 👑 BLOQUE ÚNICO PARA MOSTRAR GANADOR (Dashboard + Widget) 👑 */
