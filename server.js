@@ -105,9 +105,19 @@ io.on("connection", (socket) => {
   // ⚡ EVENTOS DE SUBASTA
   // ===============================
   socket.on("iniciar_subasta", (data) => {
-    console.log("🚀 Subasta iniciada");
+    
+    // 🛑 SOLUCIÓN BUG TIKFINITY (Paso 1): Limpiar la lista de participantes acumulados
+    participantes = {}; 
+    
+    console.log("🚀 Subasta iniciada y lista de participantes limpia.");
+    
+    // 🛑 SOLUCIÓN BUG TIKFINITY (Paso 2): Notificar a todos los clientes (widgets/dashboard) 
+    // que la lista debe estar vacía. Tu cliente escuchará 'update_participantes'.
+    io.emit("update_participantes", participantes); 
+    
+    // Lógica original:
     io.emit("subasta_iniciada", data);
-  });
+});
 
   socket.on("sync_time", (time) => {
     socket.broadcast.emit("update_time", time);
