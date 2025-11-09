@@ -96,9 +96,11 @@ io.on("connection", (socket) => {
         }
 
         // 🛑 FILTRO CRÍTICO 2: FILTRO DE REPETICIÓN (Bug TikFinity)
-        if (data.repeatEnd === false && data.giftType !== 1) {
-            return; // Ignoramos la racha intermedia
-        }
+        if (data.repeatEnd === false && data.repeatCount > 1) {
+    // Si la racha aún no ha terminado Y se está repitiendo, ignoramos
+    console.log(`[IGNORADO] Regalo repetido: ${data.giftName}`);
+    return; 
+}
 
         const userId = data.uniqueId;
         const diamantes = data.diamondCount || 0;
