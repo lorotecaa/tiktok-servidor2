@@ -1,1018 +1,178 @@
-|<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Subasta en Vivo</title>
-    <style>
-        /* ESTILOS BASE DEL DASHBOARD (INTACTO) */
-        body { font-family: Arial, sans-serif; background: #111; color: white; text-align: center; margin:0; padding:0; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        h1 { margin:20px 0; }
-        ul { list-style: none; padding: 0; }
-        li { margin: 5px 0; font-size: 18px; }
-        .totales { margin-top: 10px; font-weight: bold; font-size: 16px; }
-        h2 { background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 5px; display: inline-block; margin-bottom: 10px; font-size: 18px; }
-        button { margin: 5px; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
-        .start { background: green; color: white; }
-        .stop { background: red; color: white; }
-        #logDonaciones { background: #333; color: #ccc; width: 740px; height: 150px; overflow-y: auto; margin: 20px auto; padding: 10px; border-radius: 10px; text-align: left; font-family: monospace; }
-        
-        /* CONTENEDORES PRINCIPALES (MODO DASHBOARD: TRES COLUMNAS) (INTACTO) */
-        /* Nota: Se han añadido los IDs 'ganadores' y 'participantes' a los divs principales abajo. */
-        #ganadores, #participantes, #controles-group { 
-    margin: 20px; 
-    padding: 20px; 
-    border-radius: 10px; 
-    display: inline-block; 
-    vertical-align: top; 
-}
-#ganadores { background: #2c3e50; width: 350px; height: 400px; overflow-y: auto; }
-#participantes { background: #27ae60; width: 350px; height: 400px; overflow-y: auto; }
-#controles-group { 
-    width: 300px; 
-    padding: 0; 
-    margin: 20px 40px 20px 20px; /* Incrementa el margen derecho a 40px */
-    display: inline-block; 
-    vertical-align: top; 
-}
-        #controles { background: #8e44ad; width: 300px; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        #tiempoBox { background: #e67e22; width: 300px; height: 120px; display:flex; flex-direction:column; justify-content:center; align-items:center; font-size:20px; font-weight:bold; border-radius: 10px; }
-
-        /* WIDGET MODE (ESTILOS FINALES PARA EL OVERLAY) (INTACTO) */
-        .widget-mode body { 
-    background: transparent !important; /* Forzar fondo transparente */
-    min-height: 100vh; /* CRÍTICO: Asegura que el cuerpo de la página ocupa toda la ventana */
-    display: block; 
-    overflow: hidden; 
-    margin: 0;
-    padding: 0;
-    width: 100vw; /* CRÍTICO: Asegura que el cuerpo de la página ocupa todo el ancho */
-}
-        
-        /* OCULTAR TODO LO QUE NO SEA EL WIDGET (INTACTO) */
-        .widget-mode #main-dashboard-content { display: none !important; }
-        .widget-mode #logDonaciones { display: none !important; } 
-
-        /* ESTILOS DEL CONTENEDOR PRINCIPAL DEL WIDGET (INTACTO) */
-        #widget-container {
-    display: none; /* Por defecto oculto */
-    flex-direction: column;
-    width: 100%; /* CAMBIO: Ahora ocupa el 100% del cuerpo del widget */
-    height: 100vh; /* CRÍTICO: Ocupa el 100% del alto de la ventana */
-    margin: 0;
-    /* ... (Otros estilos de borde y color intactos) ... */
-}
-
-        /* ESTILOS INTERNOS DEL WIDGET (INTACTO) */
-        #tiempoBox-widget { background: #1a1a1a; width: 100%; padding: 10px 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px 8px 0 0;border-bottom: 2px solid #FFD700; }
-        #tiempoRestante-widget { font-size: 2.5em; color: #FFD700; font-weight: bold; text-shadow: 0 0 8px rgba(255, 215, 0, 0.7); }
-        #subtext-widget { font-size: 14px; color: #ccc; margin-top: 5px; }
-        .snipe-alert #tiempoRestante-widget { color: #FF4D4D !important; /* ROJO */ text-shadow: 0 0 15px rgba(255, 77, 77, 1) !important; /* Sombra ROJA más fuerte */}
-        .snipe-alert #subtext-widget { color: #FF4D4D !important; /* ROJO */}
-
-
-        #participantes-widget { 
-    background: #1c2b3e; 
-    width: 100%; 
-    /* CRÍTICO: Usamos Flexbox para que esta lista ocupe todo el espacio que sobra */
-    flex-grow: 1; 
-    overflow-y: auto; /* Permite desplazamiento si la lista es muy larga */
-    padding: 10px; 
-    border-radius: 0 0 8px 8px;
-    box-sizing: border-box; 
-}
-        #participantes-widget h2, #participantes-widget .totales { display: none; }
-        #listaParticipantes-widget { padding: 0; margin: 0; list-style: none; }
-        #listaParticipantes-widget li { display: flex; align-items: center; justify-content: space-between; background: #2a3d5e; margin-bottom: 8px; padding: 10px 15px; border-radius: 12px; font-size: 16px; font-weight: bold; border: 2px solid #555; box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
-        #listaParticipantes-widget li .coins { color: #ffd700; font-size: 1.1em; margin-left: 10px; display: flex; align-items: center; }
-        /* #listaParticipantes-widget li .coins::before { content: '🪙'; margin-right: 5px; font-size: 0.9em; } */
-
-        /* --- INICIO: ESTILOS CORRECTOS PARA EL RANKING DEL WIDGET --- */
-        .rank-icon { 
-            font-size: 1.2em; 
-            color: #FFD700; /* Número de ranking en color oro */
-            margin-right: 10px; 
-            min-width: 25px; 
-            height: 25px;
-            text-align: center; 
-            background: #3a4d70; /* Fondo circular azul oscuro */
-            border-radius: 50%; /* Esto lo hace un círculo */
-            padding: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #FFD700; /* Borde dorado */
-            box-sizing: border-box; /* Para que el padding no rompa el tamaño */
-        }
-        .user-info { 
-            display: flex; 
-            align-items: center; 
-            flex-grow: 1; 
-            overflow: hidden; 
-        }
-        .user-avatar { 
-            width: 30px; 
-            height: 30px; 
-            border-radius: 50%; 
-            overflow: hidden; 
-            margin-right: 10px; 
-            border: 2px solid #fff; 
-        }
-        .user-avatar img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-        }
-        .username { 
-    color: #ecf0f1; 
-    
-    /* 🛑 CAMBIOS APLICADOS: Permitir que el texto fluya libremente */
-    white-space: normal; /* Permitir saltos de línea si es necesario */
-    overflow: visible; 
-    text-overflow: clip; /* Deshabilita los '...' */
-    max-width: none; /* Permite que el ancho sea el que necesite el nombre */
-}
-        /* --- FIN: ESTILOS CORRECTOS --- */
-        #winner-popup {
-            display: none; /* Oculto por defecto */
-            position: fixed; /* Overlay que cubre todo */
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.85); /* Fondo oscuro semitransparente */
-            z-index: 100;
-            /* Usamos flex para centrar el contenido */
-            justify-content: center;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            /* Para la animación de entrada/salida */
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-
-        #winner-content {
-            background: linear-gradient(145deg, #1f2a3a, #1a2330);
-            border: 4px solid #FFD700; /* Borde Dorado */
-            border-radius: 20px;
-            padding: 40px;
-            text-align: center;
-            color: white;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7); /* Brillo Dorado */
-            /* Animación "pop" de entrada */
-            transform: scale(0.7);
-            transition: transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-        }
-
-        #winner-content h2 {
-            margin: 0;
-            font-size: 24px;
-            color: #eee;
-        }
-
-        #winner-avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border: 4px solid #FFD700;
-            margin: 20px auto;
-            overflow: hidden;
-        }
-        #winner-avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-        #winner-name {
-            font-size: 48px;
-            color: #FFD700;
-            margin: 10px 0;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-        }
-
-        #winner-content p {
-            font-size: 20px;
-            color: #ccc;
-            margin: 10px 0;
-        }
-        #winner-content p span {
-            color: #fff;
-            font-weight: bold;
-        }
-
-        .felicidades {
-            font-size: 28px !important;
-            font-weight: bold;
-            color: #FFD700 !important;
-        }
-        #titulo-principal-contenedor {
-    width: 100%; /* Asegura que ocupe todo el ancho */
-    text-align: center; /* Centra el texto */
-    margin-bottom: 20px; /* Espacio debajo del título */
-}
-#main-dashboard-content h1 { 
-    width: 100%;        /* CRÍTICO: Hace que el título ocupe toda la fila disponible */
-    text-align: center; /* Centra el texto horizontalmente dentro del h1 */
-    margin: 20px 0;     /* Mantiene el espaciado vertical que ya tenías */
-}
-.widget-mode #widget-container {
-    display: flex !important; 
-    position: static; 
-    top: auto;
-    left: auto;
-    width: 100%; /* ¡CRÍTICO! */
-    height: 100%; /* ¡CRÍTICO! */
-    margin: 0;
-}
-    </style>
-</head>
-<body>
-    
-   <div id="main-dashboard-content" style="display: flex; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 1200px;">
-    <h1>⚡ Subasta en Vivo ⚡</h1>
-    
-    <div id="controles-group">
-        <div id="controles">
-            <h2>🎮 Controles</h2>
-            <label for="idUnico">🔑 ID Único (para Widget):</label><br>
-            <input type="text" id="idUnico" placeholder="Ej: MiNombreDeUsuario" style="width: 90%; margin-bottom: 15px; padding: 5px;"><br>
-            <label>Usuario de TikTok:</label>
-<input id="tiktokUser" placeholder="Ej: felipe_rivas" />
-            <div class="subcuadro">
-                <label for="tiempo">⏱ Tiempo inicial (segundos):</label><br>
-                <input type="number" id="tiempo" value="200"><br><br>
-                <label for="tiempoSnipe">Tiempo de snipe (segundos):</label>
-                <input type="number" id="tiempoSnipe" value="15" min="0">
-                <button class="start" onclick="iniciar()">Iniciar</button>
-                <button onclick="pausar()">Pausar</button>
-                <button class="stop" onclick="finalizar()">Finalizar</button> <button onclick="restart()">Restart</button>
-                <button style="background:#2ecc71; color:white;" onclick="abrirWidget()">Ver Widget</button>
-                <button onclick="simularRegalo()" style="background-color: #007bff; color: white; margin-top: 5px;">Simular Regalo</button>
-            </div>
-        </div>
-        <div id="tiempoBox"><h2>⏳ Tiempo Restante</h2><div id="tiempoRestante" style="font-size: 2.5em;">0</div></div>
-    </div>
-
-    <div id="logDonaciones" style="background: #333; color: #ccc; width: 350px; height: 400px; overflow-y: auto; margin: 20px; padding: 10px; border-radius: 10px; text-align: left; font-family: monospace; display: inline-block; vertical-align: top;">
-        <strong>📝 Historial de Eventos:</strong>
-    </div>
-
-    <div id="participantes" style="background: #27ae60; width: 350px; height: 400px; overflow-y: auto; margin: 20px;">
-        <h2>👥 Participantes (Ronda Actual)</h2>
-        <ul id="listaParticipantes"></ul>
-        <div class="totales">Total participantes: <span id="totalParticipantes">0</span></div>
-        <div class="totales">Diamantes donados: <span id="totalDiamantes">0</span></div>
-    </div>
-
-    <div id="ganadores" style="background: #2c3e50; width: 350px; height: 400px; overflow-y: auto; margin: 20px;">
-        <h2>🏆 Ganadores de Rondas</h2>
-        <ul id="listaGanadores"></ul>
-    </div> 
-    
-    </div> 
-        <div id="widget-container">
-    <div id="tiempoBox-widget">
-        <div id="tiempoRestante-widget">--:--</div>
-        <div id="subtext-widget">El sorteo/subasta termina en</div>
-    </div>
-
-    <div id="participantes-widget">
-        <ul id="listaParticipantes-widget"></ul>
-    </div>
-</div>
-        
-    <div id="winner-popup" style="display: none;">
-        <div id="winner-content">
-            <h2>¡Ganador de la Ronda!</h2>
-            <div id="winner-avatar"><img></div>
-            <h1 id="winner-name">@username</h1>
-            <p>Donó un total de <span id="winner-amount">0</span> 💎</p>
-            <p class="felicidades">¡Felicidades! 🏆</p>
-        </div>
-    </div>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    
-    <script>
-        const socket = io("https://tiktok-servidor2.onrender.com"); // tu URL real de Render
-
-        const listaParticipantesEl = document.getElementById('listaParticipantes');
-        const listaGanadoresEl = document.getElementById('listaGanadores');
-        const tiempoRestanteEl = document.getElementById('tiempoRestante');
-        const logDonacionesEl = document.getElementById('logDonaciones');
-        
-        let tiempoActual = 0;
-        let intervalo = null;
-        let participantes = {};
-        let ganadoresHistorial = [];
-        let isPaused = false; // Estado para la función pausar
-        let snipeActivado = false; // <-- AÑADE ESTA LÍNEA
-        let subastaActiva = false;
-        let isSnipeModeVisual = false;
-        let isConnectedValid = false;
-
-        // 👇 INICIO: AÑADIDO BLOQUE (PROTECCIÓN ANTI-DUPLICADOS) 👇
-        const processedGiftIds = new Set();
-        setInterval(() => {
-          processedGiftIds.clear();
-          console.log("Limpiando caché de IDs de regalos procesados.");
-        }, 60000); // Limpia los IDs cada 60 segundos
-        // 👆 FIN: AÑADIDO BLOQUE 👆
-
-        // --- FUNCIONES DE UTILIDAD ---
-        function formatTime(totalSeconds) {
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        }
-        
-        function actualizarParticipantesUI() {
-    participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
-    
-    const isWidgetMode = document.body.classList.contains('widget-mode');
-    
-    // 1. Apuntamos a las listas correctas
-    const listaDashboardEl = document.getElementById('listaParticipantes');
-    const listaWidgetEl = document.getElementById('listaParticipantes-widget'); 
-
-    // 2. Limpiamos ambas listas
-    if (listaDashboardEl) listaDashboardEl.innerHTML = "";
-    if (listaWidgetEl) listaWidgetEl.innerHTML = "";
-    
-    let totalDiamantes = 0;
-    const topN = participantes.slice(0, 5); // Tomamos el Top 5 para el widget
-
-    participantes.forEach((p, index) => {
-        const liDashboard = document.createElement("li");
-        
-        // Formato de Dashboard
-        liDashboard.textContent = `${p.usuario} - ${p.cantidad} 💎`;
-        if (listaDashboardEl) listaDashboardEl.appendChild(liDashboard);
-
-        // Formato de Widget (Solo el Top 5)
-        if (index < 5 && listaWidgetEl) {
-            const liWidget = document.createElement("li");
-            const rango = index + 1;
-            
-            const avatarUrl = p.avatar_url || 'https://via.placeholder.com/30/555/FFFFFF?text=A'; 
-
-            liWidget.innerHTML = `
-                <div class="rank-icon">${rango}</div>
-                <div class="user-info">
-                    <div class="user-avatar"><img src="${avatarUrl}" alt="Avatar"></div>
-                    <span class="username">${p.usuario}</span>
-                </div>
-                <span class="coins">${p.cantidad} 🪙</span>
-            `;
-            listaWidgetEl.appendChild(liWidget);
-        }
-        
-        totalDiamantes += p.cantidad;
-    });
-    
-    if (!isWidgetMode) {
-         document.querySelector('#totalParticipantes').textContent = participantes.length;
-         document.querySelector('#totalDiamantes').textContent = totalDiamantes;
-    }
-}
-        function obtenerGanador() {
-    if (participantes.length === 0) return null;
-    return participantes.reduce((max, p) => (p.coins > max.coins ? p : max));
-}
-
-
-        function actualizarGanadoresUI() {
-            const listaGanadoresEl = document.getElementById('listaGanadores');
-            listaGanadoresEl.innerHTML = "";
-            ganadoresHistorial.forEach(g => {
-                const li = document.createElement('li');
-                li.textContent = `🏆 ${g.usuario} - ${g.cantidad} 💎`;
-                listaGanadoresEl.appendChild(li);
-            });
-        }
-        
-        // --- LÓGICA DEL TEMPORIZADOR ---
-        function iniciarTimerLogic() {
-            let tiempoInput = document.getElementById("tiempo");
-            // Solo resetea si el tiempo es 0 o indefinido (inicio)
-            if (tiempoActual <= 0) {
-                 tiempoActual = parseInt(tiempoInput ? tiempoInput.value : 200); // Usar 200 como default si no hay input
-            }
-
-
-            if (intervalo) clearInterval(intervalo);
-            
-            intervalo = setInterval(() => {
-                if (!isPaused && tiempoActual > 0) {
-                    tiempoActual--;
-                    const formattedTime = formatTime(tiempoActual);
-                    
-                    // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
-                    if (!document.body.classList.contains('widget-mode')) {
-                        socket.emit('sync_time', tiempoActual); 
-                    }
-                    
-                    // 2. Actualizamos el display LOCAL del dashboard
-                    if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
-
-                } else if (tiempoActual <= 0) {
-                     // Solo el dashboard detiene el tiempo
-                    if (!document.body.classList.contains('widget-mode')) {
-                        terminarTiempo();
-                    }
-                }
-            }, 1000);
-        }
-
-        // --- FUNCIONES DE CONTROL ---
-        function iniciar() {
-    if (!document.body.classList.contains('widget-mode')) { 
-        
-        // 🛑 VALIDACIÓN 1: Verificar si el ID está en el input
-        const idUnicoEl = document.getElementById('idUnico');
-        const streamerIdActual = idUnicoEl ? idUnicoEl.value.trim() : "";
-        
-        if (!streamerIdActual) {
-            alert("⚠️ ERROR: Debes escribir el ID Único (para Widget) antes de iniciar la subasta.");
-            logDonacionesEl.innerHTML += `<p style="color: red;">🛑 ERROR: ID Único no especificado. No se puede iniciar la subasta.</p>`;
-            return; // Detiene la función aquí
-        }
-        
-        // Llama a la conexión. La lógica de inicio debe ir DESPUÉS de la conexión.
-        conectarDashboard(); 
-
-        // 🛑 VALIDACIÓN 2: CRÍTICA. SOLO INICIAR SI EL ID ES VÁLIDO EN EL SERVIDOR
-        if (!isConnectedValid) {
-            alert("⚠️ ERROR: El ID no ha sido validado por el servidor. Revisa si hay un mensaje de error.");
-            return; // Detiene la función si el servidor ya marcó el ID como inválido
-        }
-        
-        // --- Lógica de inicio (SOLO se ejecuta si isConnectedValid es true) ---
-        snipeActivado = false; 
-        subastaActiva = true; 
-        logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda...</p>`;
-        
-        // Si el servidor valida el ID y llegamos aquí, entonces enviamos el evento
-        socket.emit("iniciar_subasta"); 
-        
-        isPaused = false; 
-        tiempoActual = 0; 
-        iniciarTimerLogic(); // Inicia el reloj maestro en el dashboard
-    }
-}
-function conectarDashboard() {
-    // 1. Lee el ID único del streamer (para el widget)
-    const idUnicoEl = document.getElementById('idUnico');
-    const streamerIdActual = idUnicoEl ? idUnicoEl.value.trim() : "";
-
-    // 2. Lee el username de TikTok desde un input adicional
-    const tiktokUserEl = document.getElementById('tiktokUser');
-    const tiktokUserActual = tiktokUserEl ? tiktokUserEl.value.trim() : "";
-
-    // 3. Validaciones
-    if (!streamerIdActual) {
-        alert("❌ Debes escribir el ID Único (para Widget) antes de iniciar la subasta.");
-        isConnectedValid = false;
-        return;
-    }
-
-    if (!tiktokUserActual) {
-        alert("⚠️ Debes escribir tu nombre de usuario de TikTok (sin @).");
-        isConnectedValid = false;
-        return;
-    }
-
-    // 4. Marcar la conexión como válida (hasta que el servidor diga lo contrario)
-    isConnectedValid = true;
-
-    // 5. Emitir el evento de unión a la sala
-    socket.emit("join_room", { 
-        streamerId: streamerIdActual, 
-        tiktokUser: tiktokUserActual 
-    });
-
-    // 6. Guardar variables globales
-    streamerId = streamerIdActual;
-    tiktokUser = tiktokUserActual;
-
-    console.log(`✅ DASHBOARD conectado a sala: ${streamerIdActual} (usuario TikTok: ${tiktokUserActual})`);
-}
-
-        function terminarTiempo() {
-    // 1. Esta función solo debe correr en el Dashboard (el "Maestro")
-    if (!document.body.classList.contains('widget-mode')) { 
-        socket.emit("restaurar_widget");
-
-        // 2. Detiene el reloj
-        if (intervalo) { 
-            clearInterval(intervalo); 
-            intervalo = null; 
-        }
-
-        // 3. Avisa a todos que el tiempo (y la subasta) se acabó
-        socket.emit('finalizar_subasta'); // Avisa al servidor que no acepte más regalos
-        socket.emit('sync_time', 0); // Envía '0' a los widgets
-        tiempoActual = 0; 
-        if (document.getElementById('tiempoRestante')) {
-            document.getElementById('tiempoRestante').textContent = formatTime(0);
-        }
-
-        // 4. Revisa si hay que activar el SNIPE
-        // (Nota: cambié el default de 15 a 0 para más seguridad)
-        const tiempoSnipe = parseInt(document.getElementById("tiempoSnipe").value) || 0;
-
-        if (!snipeActivado && tiempoSnipe > 0) {
-            // A) AÚN QUEDA EL SNIPE
-            snipeActivado = true; // Marcamos que el snipe ya se usó
-            logDonacionesEl.innerHTML += `<p style="color: yellow;">⚡ Modo SNIPE activado (${tiempoSnipe}s extra)</p>`;
-
-            // Avisamos a los widgets del nuevo tiempo
-            socket.emit("iniciar_snipe_cliente", tiempoSnipe);
-
-            // 🛑 NUEVA EMISIÓN: Avisamos a los Widgets que inicien la ALERTA ROJA 🛑
-            socket.emit("activar_alerta_snipe_visual"); // <--- AÑADE ESTA LÍNEA
-
-            // Reiniciamos el temporizador local solo con el tiempo de snipe
-            tiempoActual = tiempoSnipe;
-            iniciarTimerLogic();
-
-        } 
-        else {
-            // B) NO HAY SNIPE (o el snipe ya terminó)
-            // ¡Aquí es donde ocurre la finalización automática!
-
-            if (snipeActivado) {
-                logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (post-snipe).</p>`;
-            } else {
-                logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (sin snipe).</p>`;
-            }
-
-            // --- INICIO DE LA LÓGICA MOVIDA DESDE 'FINALIZAR' ---
-            if (participantes.length > 0) {
-                const ganador = participantes[0]; // El primer elemento ya está ordenado
-                ganadoresHistorial.unshift(ganador); // Añadir al principio del historial
-                logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
-                actualizarGanadoresUI();
-                socket.emit("anunciar_ganador", ganador);
-            } else {
-                 logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
-            }
-    }
-}
-} 
-        function finalizar() {
-    // 1. Esta función solo debe correr en el Dashboard (el "Maestro")
-    if (!document.body.classList.contains('widget-mode')) {
-
-        // 2. Detener CUALQUIER temporizador que esté activo
-        if (intervalo) { 
-            clearInterval(intervalo); 
-            intervalo = null; 
-        }
-        
-        // 3. Sincronizar el tiempo a 0 en todos lados
-        tiempoActual = 0;
-        socket.emit('sync_time', 0); // Envía '0' a los widgets
-        if (document.getElementById('tiempoRestante')) {
-            document.getElementById('tiempoRestante').textContent = formatTime(0);
-        }
-        
-        // 4. Avisar al servidor que la subasta se detenga INMEDIATAMENTE
-        socket.emit('finalizar_subasta'); 
-
-        // 5. Loggear que fue manual
-        logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada manualmente.</p>`;
-
-        // 6. Procesar al ganador (si existe)
-        if (participantes.length > 0) {
-                        
-            participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad)); // Ordena de mayor a menor (con parseInt)
-
-            const ganador = participantes[0]; // Ahora sí, el [0] es el que más donó
-            ganadoresHistorial.unshift(ganador); 
-            logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
-            actualizarGanadoresUI();
-            socket.emit("anunciar_ganador", ganador); // Envía al ganador correcto
-        
-        } else {
-             logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
-        }
-
-        // 7. APAGAR EL INTERRUPTOR Y LIMPIAR (SIEMPRE)
-        subastaActiva = false; // <--- LUGAR CORRECTO (Fuera del if/else del ganador)
-        participantes = []; 
-        actualizarParticipantesUI(); 
-        socket.emit("limpiar_listas"); // (Esta es la única llamada que debe estar)
-    }
-}
-        // --- 👇 ¡AQUÍ ESTÁ EL ARREGLO! 👇 ---
-        // Manda la orden de limpiar SIEMPRE, 
-        // sin importar si hubo ganador o no.
-        socket.emit("limpiar_listas");
-        // --- 👆 FIN DEL ARREGLO 👆 ---
-          
-        function restart() {
-    if (!document.body.classList.contains('widget-mode')) { // Solo el dashboard puede reiniciar
-        finalizar(); // Finaliza la ronda actual (guarda ganador si hay, limpia lista)
-        // Limpia el historial de ganadores también
-        ganadoresHistorial = [];
-        actualizarGanadoresUI();
-        
-        // 🔁 Resetea variables globales
-        snipeActivado = false; // <-- Muy importante para permitir un nuevo snipe en la siguiente subasta
-        
-        logDonacionesEl.innerHTML = '<strong>📝 Historial de Eventos:</strong><p style="color: cyan;">🔄 Sistema reiniciado. Listo para una nueva subasta.</p>';
-        
-        // No emitimos iniciar_subasta aquí, esperamos que el usuario presione Iniciar
-        // Pero sí reseteamos el tiempo visual a 0
-        if (document.getElementById('tiempoRestante')) 
-            document.getElementById('tiempoRestante').textContent = formatTime(0);
-        
-        socket.emit('sync_time', 0); // Asegurar que widgets muestren 0
-    }
-}
-
-
-        function pausar() {
-            if (!document.body.classList.contains('widget-mode')) { // Solo el dashboard puede pausar
-                isPaused = !isPaused; // Invierte el estado (true/false)
-                if (isPaused) {
-                    if (intervalo) clearInterval(intervalo); // Detenemos el intervalo local
-                    intervalo = null; // Marcar como detenido
-                    logDonacionesEl.innerHTML += `<p style="color: orange;">⏸️ Temporizador en pausa.</p>`;
-                    // No enviamos nada al servidor, el widget se queda con la última hora recibida
-                } else {
-                    iniciarTimerLogic(); // Reanudamos la lógica (continúa desde tiempoActual)
-                    logDonacionesEl.innerHTML += `<p style="color: green;">▶️ Temporizador reanudado.</p>`;
-                }
-            }
-        }
-        // 👇 AÑADE ESTA FUNCIÓN COMPLETA 👇
-        function simularRegalo() {
-            // Solo el dashboard (maestro) puede simular
-            if (document.body.classList.contains('widget-mode')) return;
-
-            // 1. Nombres y montos aleatorios
-            const nombres = ["GatitoVeloz", "LoboEstelar", "ZorroGamer", "PandaNinja", "DragonRojo"];
-            const randomUser = nombres[Math.floor(Math.random() * nombres.length)] + Math.floor(Math.random() * 500);
-            const randomAmount = Math.floor(Math.random() * 100) + 1; // Simular donación de 1 a 100
-            const giftName = "Simulación";
-
-            // 2. Obtener el total anterior (si el usuario ya existe)
-            const existente = participantes.find(p => p.usuario === randomUser);
-            let nuevoTotal;
-
-            if (existente) {
-                nuevoTotal = existente.cantidad + randomAmount; // Sumamos la nueva donación al total
-            } else {
-                nuevoTotal = randomAmount; // Es un usuario nuevo
-            }
-            
-            // 3. Mostrar en el log del dashboard
-            logDonacionesEl.innerHTML += `<p style="color: gray;">[SIM] ${randomUser} envió +${randomAmount}🪙 (Nuevo Total: ${nuevoTotal})</p>`;
-            logDonacionesEl.scrollTop = logDonacionesEl.scrollHeight;
-
-            // 4. Emitir al servidor el *NUEVO TOTAL*
-            // (El servidor lo retransmitirá, y socket.on("new_gift") lo reemplazará)
-            socket.emit("nuevo_regalo", {
-  usuario: randomUser,
-  cantidad: nuevoTotal,
-  regalo: giftName,
-  avatar_url: profilePictureUrl || "https://via.placeholder.com/40/555/FFFFFF?text=U"
-});
-        }
-        // 👆 FIN DE LA FUNCIÓN NUEVA 👆
-
-        // --- EVENTOS DE SINCRONIZACIÓN (El Widget recibe la hora) ---
-        socket.on('update_time', (time) => {
-    
-    if (document.body.classList.contains('widget-mode')) {
-        
-        // ... (Tu lógica existente para subastaActiva) ...
-
-        tiempoActual = time;
-        const formattedTime = formatTime(time);
-        
-        const tiempoElWidget = document.getElementById('tiempoRestante-widget'); 
-        const subtextElWidget = document.getElementById('subtext-widget');
-        
-        if (tiempoElWidget) tiempoElWidget.textContent = formattedTime;
-        
-        // 🛑 LÓGICA DE CAMBIO DE CLASE AHORA USA LA BANDERA 🛑
-        
-        // Si la bandera está ACTIVA (solo se activa cuando el tiempo llega a cero por primera vez)
-        if (isSnipeModeVisual && time > 0) {
-            
-            // 1. Activa la clase 'snipe-alert'. ¡El contador se pone ROJO!
-            document.body.classList.add('snipe-alert');
-            
-            // 2. Cambia el texto del subtítulo a la alerta
-            if (subtextElWidget) {
-                subtextElWidget.textContent = "Tiempo por delay de live"; 
-            }
-        
-            } else {
-                
-                // 1. Desactiva la clase (vuelve al AMARILLO original si no está en Snipe)
-                document.body.classList.remove('snipe-alert');
-                
-                // 2. Restaura el texto original del subtítulo (si la subasta aún no ha terminado, es el texto por defecto)
-                if (subtextElWidget) {
-                    subtextElWidget.textContent = "El sorteo/subasta termina en"; 
-                }
-            }
-        }
-    });
-
-    // --- DETECCIÓN DE WIDGET O DASHBOARD ---
-const urlParams = new URLSearchParams(window.location.search);
-
-// Detecta si la URL es /widget O si tiene ?mode=widget
-const currentPath = window.location.pathname || "";
-const isWidgetMode = window.location.search.includes("mode=widget") || currentPath.includes("/widget");
-
-// Variables globales (se llenarán dependiendo del modo)
-let streamerId = "";
-let tiktokUser = "";
-
-if (isWidgetMode) {
-    // ===============================
-    // 🏃 MODO WIDGET
-    // ===============================
-    console.log("🟣 Modo Widget activado.");
-
-    // 1. APLICA LA CLASE (Tu CSS se encargará de los estilos)
-    document.body.classList.add("widget-mode");
-
-    // 2. OCULTA EL DASHBOARD (Tu CSS ya lo hace, pero forzamos)
-    const mainDashboardContent = document.getElementById("main-dashboard-content");
-    if (mainDashboardContent) mainDashboardContent.style.display = "none";
-
-    // 3. MUESTRA EL CONTENEDOR DEL WIDGET (El que SÍ existe en tu HTML)
-    const widgetContainer = document.getElementById("widget-container");
-    if (widgetContainer) {
-        widgetContainer.style.display = 'flex'; // O 'block', según tu diseño
-    } else {
-        console.error("CRÍTICO: No se encontró #widget-container en el HTML.");
-    }
-
-    // 4. LEE EL ID DE LA URL Y CONECTA
-    streamerId = urlParams.get("streamerId"); // Asegúrate que tu Step 2 envía 'streamerId'
-    if (streamerId) {
-        socket.emit("join_room", { streamerId, tiktokUser: "WidgetCliente" });
-        console.log(`✅ WIDGET unido a la sala de ${streamerId}`);
-    } else {
-        console.error("⚠️ El Widget no recibió el streamerId en la URL");
-    }
-
-} else {
-    // ===============================
-    // 🖥️ MODO DASHBOARD
-    // ===============================
-    console.log("🎛️ Dashboard normal");
-
-    // Oculta el contenedor del widget (por si acaso)
-    const widgetContainer = document.getElementById("widget-container");
-    if (widgetContainer) widgetContainer.style.display = "none";
-
-    // 5. LÓGICA DEL DASHBOARD (Lee los inputs)
-    const idUnicoEl = document.getElementById('idUnico');
-    const tiktokUserEl = document.getElementById('tiktokUser');
-    
-    // (Tu lógica para leer los inputs y conectar a TikTok va aquí)
-    // ...
-}
-    // ===============================
-    // 🎁 ESCUCHAR REGALOS EN TIEMPO REAL DESDE EL SERVIDOR
-    // (Esto corre en AMBOS: Dashboard y Widget)
 // ===============================
-socket.on("new_gift", (giftData) => {
-    // 🛑 IMPORTANTE: Ya no se hace el conteo aquí. El servidor lo hará.
-    console.log("💎 Nuevo regalo recibido del servidor:", giftData);
-    
-    // Si necesitas logs en el Dashboard:
-    logDonacionesEl.innerHTML += `<p style="color: cyan;">🎁 ${giftData.nickname || giftData.username} envió ${giftData.giftName || giftData.gift_name} (${giftData.diamondCount || giftData.diamond_count} 💎)</p>`;
-    logDonacionesEl.scrollTop = logDonacionesEl.scrollHeight;
-    
-    // NOTA: La actualización de la UI se hará en el nuevo listener 'update_participantes'
-});
-// 📢 ¡AQUÍ VA LA LÍNEA DE SINCRONIZACIÓN!
-            // Ahora la variable 'participantes' está finalizada, sumada y ordenada.
-            socket.emit('sync_participantes', participantes); // <-- ¡MOVER AQUÍ!
-
-            // Ahora sí, actualiza la UI con la lista ya ordenada
-            actualizarParticipantesUI();
-        ;
-socket.on('id_invalido', (data) => {
-    // 🛑 1. Establecer la bandera como inválida
-    isConnectedValid = false; 
-
-    // 🛑 2. Detener la lógica de la subasta/tiempo
-    subastaActiva = false;
-    clearInterval(intervalo);
-    logDonacionesEl.innerHTML += `<p style="color: red;">🛑 ERROR: Conexión rechazada. ID Inválido: ${data.streamerId}</p>`;
-    
-    // Muestra la alerta (como ya lo tienes)
-    alert(`❌ ERROR: El ID '${data.streamerId}' no está en la lista autorizada. Por favor, comunícate con el administrador.`);
-});
-// 🛑 FIN DEL BLOQUE A AÑADIR 🛑
+// 📦 SERVIDOR PRINCIPAL TIKTOK (MULTI-USUARIO)
 // ===============================
-// 🧹 Limpiar listas cuando el servidor lo indique
+
+// Dependencias
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const path = require("path");
+const { WebcastPushConnection } = require("tiktok-live-connector");
+require("dotenv").config();
+
 // ===============================
-socket.on("limpiar_listas_clientes", () => {
-    console.log("🧹 Recibido comando para limpiar lista local.");
-    participantes = [];
-    actualizarParticipantesUI();
-    subastaActiva = false;
-    console.log("CLIENTE: Interruptor APAGADO.");
+// 🌐 CONFIGURACIÓN EXPRESS
+// ===============================
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+const PORT = process.env.PORT || 10000;
+
+// Carpeta pública
+app.use(express.static(path.join(__dirname, "public")));
+
+// Ruta para el Dashboard principal
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// 🛑 AÑADIDO: Ruta para el Widget
+app.get("/widget", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ===============================
-// 🧭 Función para actualizar la UI (debe ir FUERA de socket.on)
+// ⚙️ CONEXIONES TIKTOK POR USUARIO
 // ===============================
-function actualizarParticipantesUI() {
-    participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
+const conexionesTikTok = {}; // Guardará conexiones por streamerId
 
-    const listaDashboard = document.getElementById("listaParticipantes");
-    const listaWidget = document.getElementById("listaParticipantes-widget");
-    if (listaDashboard) listaDashboard.innerHTML = "";
-    if (listaWidget) listaWidget.innerHTML = "";
+io.on("connection", (socket) => {
+  console.log("🟢 Cliente conectado:", socket.id);
 
-    participantes.forEach((p, index) => {
-        const itemHTML = `
-            <li class="participante-item">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <span class="rank">${index + 1}.</span>
-            <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=U'}"
-                alt="${p.usuario || 'Usuario'}" 
-                style="width:40px; height:40px; border-radius:50%;"> 
-            
-            <span class="username" title="${p.usuario}"> ${p.usuario}
-            </span>
-        </div>
-        <div class="coins">${p.cantidad} 💎</div>
-    </li>
-`;
+  socket.on("join_room", async (data) => {
+    const streamerId = data?.streamerId?.replace("@", "");
+    if (!streamerId) return;
 
-        if (listaDashboard && !document.body.classList.contains('widget-mode')) {
-            listaDashboard.innerHTML += itemHTML;
-        }
+    console.log(`📡 Cliente unido a sala: ${streamerId}`);
+    socket.join(streamerId);
 
-        if (listaWidget && document.body.classList.contains('widget-mode')) {
-            listaWidget.innerHTML += itemHTML;
-        }
-    });
-}
+    // Si no existe una conexión activa para este streamer, crearla
+    if (!conexionesTikTok[streamerId]) {
+      console.log(`🎥 Conectando con TikTok Live de @${streamerId}`);
 
-function abrirWidget() {
-    // 1. Lee el ID del input (id="idUnico")
-    const streamerIdInput = document.getElementById('idUnico'); 
-    const streamerId = streamerIdInput ? streamerIdInput.value.trim() : '';
-    
-    if (!streamerId) {
-        alert('Por favor, introduce el ID del Streamer primero.');
+      const tiktokConn = new WebcastPushConnection(streamerId, {
+        enableWebsocketUpgrade: true,
+        requestOptions: { timeout: 10000 },
+        disableEulerFallbacks: true
+      });
+
+      try {
+        await tiktokConn.connect();
+        console.log(`✅ Conectado a la transmisión de @${streamerId}`);
+      } catch (err) {
+        console.error(`❌ Error conectando con @${streamerId}:`, err);
+        socket.emit("error_conexion", { message: "No se pudo conectar al Live." });
         return;
-    }
-    
-    // 2. 🛑 CRÍTICO: USA LA URL COMPLETA DE TU SERVIDOR DE RENDER
-    // Reemplaza esto con tu URL real si es diferente
-    const baseUrl = "https://tiktok-servidor2.onrender.com"; 
-    
-    const widgetURL = `${baseUrl}/widget?streamerId=${streamerId}`; 
-    
-    // 3. Abre la nueva ventana
-    console.log("Abriendo Widget en:", widgetURL); // Revisa la consola del Dashboard
-    window.open(widgetURL, 'WidgetSubasta', 'width=360,height=580'); 
-}
-/* ================================================== */
-/* 👑 BLOQUE ÚNICO PARA MOSTRAR GANADOR (Dashboard + Widget) 👑 */
-/* ================================================== */
-socket.on("anunciar_ganador", (ganador) => {
-    if (!ganador || !ganador.usuario) {
-        console.log("⚠️ No hubo ganador en esta ronda.");
-        return;
-    }
+      }
 
-    const isWidget = document.body.classList.contains('widget-mode');
+      // Guardar conexión
+      conexionesTikTok[streamerId] = tiktokConn;
 
-    if (!isWidget) {
-        // ===========================
-        // 🖥️ MOSTRAR EN DASHBOARD
-        // ===========================
-        console.log("🎬 Mostrando popup de ganador en el Dashboard:", ganador.usuario);
+      // 🎁 Evento: regalo recibido
+      tiktokConn.on("gift", (data) => {
+        const giftData = {
+          userId: data.uniqueId,
+          nickname: data.nickname,
+          profilePictureUrl: data.profilePictureUrl,
+          diamondCount: data.diamondCount || 0,
+          giftName: data.giftName,
+          repeatCount: data.repeatCount,
+          streakable: data.streakable
+        };
+        console.log(`🎁 [${streamerId}] ${giftData.nickname} envió ${giftData.giftName} x${giftData.repeatCount}`);
+        io.to(streamerId).emit("new_gift", giftData);
+      });
 
-        const popup = document.getElementById('winner-popup');
-        const nameEl = document.getElementById('winner-name');
-        const amountEl = document.getElementById('winner-amount');
-        const avatarImgEl = document.getElementById('winner-avatar').querySelector('img');
-        const contentEl = document.getElementById('winner-content');
-
-        nameEl.textContent = ganador.usuario;
-        amountEl.textContent = ganador.cantidad + " 🪙";
-        avatarImgEl.src = ganador.avatar_url || 'https://via.placeholder.com/100/555/FFFFFF?text=A';
-
-        requestAnimationFrame(() => {
-            popup.style.display = 'flex';
-            requestAnimationFrame(() => {
-                popup.style.opacity = '1';
-                contentEl.style.transform = 'scale(1)';
-            });
+      // 💬 Evento: mensaje en el chat
+      tiktokConn.on("chat", (data) => {
+        io.to(streamerId).emit("new_chat", {
+          user: data.uniqueId,
+          comment: data.comment
         });
+      });
 
-        setTimeout(() => {
-            popup.style.opacity = '0';
-            contentEl.style.transform = 'scale(0.7)';
-            setTimeout(() => {
-                popup.style.display = 'none';
-                socket.emit("limpiar_listas");
-            }, 500);
-        }, 10000);
-
-    } else {
-        // ===========================
-        // 📺 MOSTRAR EN WIDGET (TIKTOK STUDIO)
-        // ===========================
-        console.log("👑 Mostrando ganador en el widget:", ganador.usuario);
-
-        // 1️⃣ Limpiar el ranking
-        const rankingList = document.getElementById("listaParticipantes-widget");
-        if (rankingList) rankingList.innerHTML = "";
-        participantes = [];
-
-        // 2️⃣ Crear un banner flotante encima del widget
-        const container = document.createElement("div");
-        container.id = "widget-winner-popup";
-        container.style.position = "fixed";
-        container.style.top = "10%";
-        container.style.left = "50%";
-        container.style.transform = "translateX(-50%)";
-        container.style.zIndex = "9999";
-        container.style.background = "rgba(0,0,0,0.85)";
-        container.style.color = "#fff";
-        container.style.padding = "25px 50px";
-        container.style.borderRadius = "20px";
-        container.style.textAlign = "center";
-        container.style.fontSize = "1.6em";
-        container.style.backdropFilter = "blur(6px)";
-        container.style.boxShadow = "0 0 20px rgba(255, 215, 0, 0.8)";
-        container.style.animation = "popIn 0.4s ease";
-
-        container.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:center; gap:15px;">
-                <img src="${ganador.avatar_url || 'https://via.placeholder.com/60/000/fff?text=?'}"
-                     style="width:60px; height:60px; border-radius:50%; border:3px solid gold;">
-                <div>
-                    <div style="font-weight:bold; color:#FFD700;">🏆 ¡GANADOR DE LA SUBASTA! 🏆</div>
-                    <div>${ganador.usuario}</div>
-                    <div style="font-size:1.2em;">${ganador.cantidad} 🪙</div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(container);
-
-        // 3️⃣ Quitar banner después de 10 segundos
-        setTimeout(() => {
-            container.style.transition = "opacity 0.5s ease";
-            container.style.opacity = "0";
-            setTimeout(() => {
-                container.remove();
-                socket.emit("limpiar_listas");
-            }, 500);
-        }, 10000);
+      // ❤️ Evento: likes
+      tiktokConn.on("like", (data) => {
+        io.to(streamerId).emit("new_like", {
+          user: data.uniqueId,
+          likeCount: data.likeCount
+        });
+      });
     }
+  });
+
+  // ===============================
+  // ⚡ EVENTOS DE SUBASTA
+  // ===============================
+  socket.on("iniciar_subasta", (data) => {
+    
+    // 🛑 SOLUCIÓN BUG TIKFINITY (Paso 1): Limpiar la lista de participantes acumulados
+    participantes = {}; 
+    
+    console.log("🚀 Subasta iniciada y lista de participantes limpia.");
+    
+    // 🛑 SOLUCIÓN BUG TIKFINITY (Paso 2): Notificar a todos los clientes (widgets/dashboard) 
+    // que la lista debe estar vacía. Tu cliente escuchará 'update_participantes'.
+    io.emit("update_participantes", participantes); 
+    
+    // Lógica original:
+    io.emit("subasta_iniciada", data);
 });
 
-/* Animación del popup */
-const style = document.createElement("style");
-style.innerHTML = `
-@keyframes popIn {
-  0% { transform: scale(0.8); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}`;
-document.head.appendChild(style);
-// Widget (Cliente) - Recepción de eventos del Dashboard
-socket.on("activar_alerta_snipe_visual", () => {
-    // Cuando el Dashboard dice que el Snipe comenzó, activamos la bandera visual
-    isSnipeModeVisual = true;
-});
+  socket.on("sync_time", (time) => {
+    socket.broadcast.emit("update_time", time);
+  });
 
-socket.on('finalizar_subasta', () => {
-    // Cuando la subasta termina, la bandera se apaga (además de la limpieza)
-    isSnipeModeVisual = false; 
+  socket.on("finalizar_subasta", () => {
+    console.log("⏹️ Subasta finalizada.");
+    io.emit("subasta_finalizada");
+  });
+socket.on("new_tiktok_gift", (giftData) => {
     
-    // Y hacemos la limpieza final del cuerpo para volver a amarillo
-    document.body.classList.remove('snipe-alert');
-    const subtextElWidget = document.getElementById('subtext-widget');
-    if (subtextElWidget) subtextElWidget.textContent = "El sorteo/subasta termina en";
-});
-document.addEventListener("DOMContentLoaded", () => {
-    const params = new URLSearchParams(window.location.search);
-    
-    if (params.has("streamerId")) {
-        // 🟡 Modo widget activado
-        document.body.classList.add("widget-mode");
-        console.log("🟡 Widget mode activo — solo se mostrará el overlay.");
-    } else {
-        console.log("🟢 Dashboard normal.");
+    // 🛑 FILTRO DE REPETICIÓN CRÍTICO (Debes tener esta información en giftData)
+    // Si tu servicio externo te da 'repeatEnd' o 'giftType', úsalo aquí. 
+    // Si no, debes asumir que cada evento es un regalo y solo contar uno.
+
+    // 1. Usa la clave única (Objeto participantes)
+    const userId = giftData.userId || giftData.user_id;
+    const diamantes = giftData.diamondCount || giftData.diamond_count;
+
+    if (diamantes > 0) {
+        if (participantes[userId]) {
+            participantes[userId].cantidad += diamantes;
+        } else {
+            participantes[userId] = {
+                // ... (Inicializa el participante aquí)
+                cantidad: diamantes
+            };
+        }
     }
-});
-    </script>
-</body>
-</html>
 
+    // 2. Emitir la lista ya procesada al cliente
+    io.emit("update_participantes", participantes);
+    
+    // 3. Lógica de snipe (si aplica)
+    // ...
+})
+  socket.on("activar_alerta_snipe_visual", () => {
+    console.log("⚡ ALERTA SNIPE ACTIVADA");
+    io.emit("activar_alerta_snipe_visual");
+  });
+
+  socket.on("anunciar_ganador", (ganador) => {
+    console.log("🏆 Ganador:", ganador);
+    io.emit("anunciar_ganador", ganador);
+  });
+
+  socket.on("limpiar_listas", () => {
+    console.log("🧹 Limpiando listas...");
+    io.emit("limpiar_listas_clientes");
+  });
+});
+
+// ===============================
+// 🚀 INICIAR SERVIDOR
+// ===============================
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+});
