@@ -497,7 +497,8 @@ if (Array.isArray(participantes)) {
         // 🛑 LIMPIEZA 4: CRÍTICA VISUAL (AÑADE ESTA LÍNEA) 🛑
 // Esto envía la orden al Widget de quitar el color rojo y el texto de alerta.
 socket.emit("desactivar_alerta_snipe_visual");
-
+// 🛑 LIMPIEZA 5: RESET DE BANDERA LÓGICA (NUEVA LÍNEA AÑADIDA) 🛑
+        socket.emit("reset_snipe_state_visual"); // ⬅️ **AÑADIR AQUÍ**
         // --- Lógica de inicio (SOLO se ejecuta si isConnectedValid es true) ---
         subastaActiva = true; 
         logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda...</p>`;
@@ -658,9 +659,11 @@ function conectarDashboard() {
         } else {
              logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
         }
+        subastaActiva = false; // <--- LUGAR CORRECTO (Fuera del if/else del ganador)
+        // 🛑 LIMPIEZA CRÍTICA (NUEVA LÍNEA AÑADIDA) 🛑
+        socket.emit("reset_snipe_state_visual"); // ⬅️ **AÑADIR AQUÍ**
 
         // 7. APAGAR EL INTERRUPTOR Y LIMPIAR (SIEMPRE)
-        subastaActiva = false; // <--- LUGAR CORRECTO (Fuera del if/else del ganador)
         participantes = {}; 
         actualizarParticipantesUI(); 
         socket.emit("limpiar_listas"); // (Esta es la única llamada que debe estar)
@@ -1146,7 +1149,8 @@ document.addEventListener("DOMContentLoaded", () => {
 socket.on("reset_snipe_state_visual", () => {
     // 🛑 ESTO SOLUCIONA EL COLOR PERSISTENTE 🛑
     isSnipeModeVisual = false; 
-
+// **OPCIONAL:** Forzamos también la limpieza de la clase (por si acaso)
+    document.body.classList.remove('snipe-alert');
     // Opcional: Si el manejador de 'desactivar_alerta_snipe_visual' no funciona, 
     // puedes forzar la remoción de la clase aquí de nuevo:
     // document.body.classList.remove('snipe-alert'); 
