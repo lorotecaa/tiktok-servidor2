@@ -455,7 +455,7 @@ if (Array.isArray(participantes)) {
 }
 
         // --- FUNCIONES DE CONTROL ---
-        function iniciar() {
+       function iniciar() {
     if (!document.body.classList.contains('widget-mode')) { 
         
         // 🛑 VALIDACIÓN 1: Verificar si el ID está en el input
@@ -468,7 +468,7 @@ if (Array.isArray(participantes)) {
             return; // Detiene la función aquí
         }
         
-        // Llama a la conexión. La lógica de inicio debe ir DESPUÉS de la conexión.
+        // 🛑 Lógica de Conexión: Asumimos que conectarDashboard() se encarga de isConnectedValid
         conectarDashboard(); 
 
         // 🛑 VALIDACIÓN 2: CRÍTICA. SOLO INICIAR SI EL ID ES VÁLIDO EN EL SERVIDOR
@@ -477,8 +477,25 @@ if (Array.isArray(participantes)) {
             return; // Detiene la función si el servidor ya marcó el ID como inválido
         }
         
+        // --- Lógica de REINICIO Y LIMPIEZA CRÍTICA ---
+        
+        // 🛑 LIMPIEZA 1: Resetear la bandera del Snipe
+        snipeActivado = false; // ESTO SOLUCIONA QUE LA SEGUNDA RONDA NO INICIE EN SNIPE
+        
+        // 🛑 LIMPIEZA 2: Limpiar lista local de participantes y la UI
+        participantes = {}; // Limpia la variable global local
+        actualizarParticipantesUI(); // Actualiza el dashboard (muestra Total: 0, etc.)
+        
+        // 🛑 LIMPIEZA 3: Ocultar el modal del ganador de la ronda anterior (si es que existe)
+        if (typeof ocultarGanadorUI === 'function') {
+            ocultarGanadorUI(); 
+        } else {
+            // Alternativa si no tienes esa función, usa el ID del modal:
+            const modalGanador = document.getElementById('modalGanador'); // Asumiendo este ID
+            if (modalGanador) modalGanador.style.display = 'none';
+        }
+
         // --- Lógica de inicio (SOLO se ejecuta si isConnectedValid es true) ---
-        snipeActivado = false; 
         subastaActiva = true; 
         logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda...</p>`;
         
@@ -486,7 +503,7 @@ if (Array.isArray(participantes)) {
         socket.emit("iniciar_subasta"); 
         
         isPaused = false; 
-        tiempoActual = 0; 
+        tiempoActual = 0; // Se fuerza a 0 para que iniciarTimerLogic tome el valor del input
         iniciarTimerLogic(); // Inicia el reloj maestro en el dashboard
     }
 }
