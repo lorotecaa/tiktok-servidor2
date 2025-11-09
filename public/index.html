@@ -415,46 +415,36 @@ if (Array.isArray(participantes)) {
         
         // --- LÓGICA DEL TEMPORIZADOR ---
         function iniciarTimerLogic() {
-                    // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
-                    if (intervalo) clearInterval(intervalo);
-    
-    // 🛑 CRÍTICO: SOLO ASIGNA EL TIEMPO INICIAL SI tiempoActual ES CERO (es decir, es el inicio de la ronda)
-    if (tiempoActual <= 0) {
-        // Asumiendo que el ID del input del tiempo es 'tiempoInicialSegundos'
-        // Si el ID de tu input es "tiempo", usa: document.getElementById("tiempo")
-        const tiempoInputEl = document.getElementById("tiempoInicialSegundos"); 
-        const tiempoInicial = parseInt(tiempoInputEl ? tiempoInputEl.value : 10); // Usamos 10s como fallback
-        
-        // Asignar el valor del input, NO 0.
-        tiempoActual = tiempoInicial;
-    }
-
-    // 2. Inicia el intervalo
-    intervalo = setInterval(() => {
-        if (!isPaused && subastaActiva) { // Asegura que solo cuente si está activo y no pausado
-            tiempoActual--;
-            const formattedTime = formatTime(tiempoActual);
-            
-            // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
-            if (!document.body.classList.contains('widget-mode')) {
-                socket.emit('sync_time', tiempoActual); 
+            let tiempoInput = document.getElementById("tiempo");
+            // Solo resetea si el tiempo es 0 o indefinido (inicio)
+            if (tiempoActual <= 0) {
+                 tiempoActual = parseInt(tiempoInput ? tiempoInput.value : 200); // Usar 200 como default si no hay input
             }
-            
-            // 2. Actualizamos el display LOCAL del dashboard
-            if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
 
+
+            if (intervalo) clearInterval(intervalo);
+            
+            intervalo = setInterval(() => {
+                if (!isPaused && tiempoActual > 0) {
+                    tiempoActual--;
+                    const formattedTime = formatTime(tiempoActual);
+                    
+                    // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
+                    if (!document.body.classList.contains('widget-mode')) {
+                        socket.emit('sync_time', tiempoActual); 
+                    }
+                    
+                    // 2. Actualizamos el display LOCAL del dashboard
+                    if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
+
+                } else if (tiempoActual <= 0) {
+                     // Solo el dashboard detiene el tiempo
+                    if (!document.body.classList.contains('widget-mode')) {
+                        terminarTiempo();
+                    }
+                }
+            }, 1000);
         }
-        
-        // 🛑 LÓGICA DE TERMINACIÓN (SOLO SI EL TIEMPO LLEGA A CERO)
-        if (tiempoActual <= 0 && !document.body.classList.contains('widget-mode')) {
-            // Detenemos el loop
-            clearInterval(intervalo);
-            intervalo = null;
-            // Llamamos a la lógica de snipe/finalización
-            terminarTiempo();
-        }
-    }, 1000);
-}
 
         // --- FUNCIONES DE CONTROL ---
         function iniciar() {
@@ -541,60 +531,57 @@ function conectarDashboard() {
             intervalo = null; 
         }
 
-        // 3. Avisa a todos que el tiempo (y la subasta) se acabó (Temporalmente)
-        socket.emit('finalizar_subasta'); 
-        socket.emit('sync_time', 0); 
+        // 3. Avisa a todos que el tiempo (y la subasta) se acabó
+        socket.emit('finalizar_subasta'); // Avisa al servidor que no acepte más regalos
+        socket.emit('sync_time', 0); // Envía '0' a los widgets
         tiempoActual = 0; 
         if (document.getElementById('tiempoRestante')) {
             document.getElementById('tiempoRestante').textContent = formatTime(0);
         }
 
         // 4. Revisa si hay que activar el SNIPE
+        // (Nota: cambié el default de 15 a 0 para más seguridad)
         const tiempoSnipe = parseInt(document.getElementById("tiempoSnipe").value) || 0;
 
-        // 🟢 LÓGICA CRÍTICA DEL SNIPE:
         if (!snipeActivado && tiempoSnipe > 0) {
-            // A) EL TIEMPO PRINCIPAL TERMINÓ, PERO FALTA EL SNIPE
-            snipeActivado = true; // ⬅️ Bandera CRÍTICA: marca que ya usamos el snipe
-            
+            // A) AÚN QUEDA EL SNIPE
+            snipeActivado = true; // Marcamos que el snipe ya se usó
             logDonacionesEl.innerHTML += `<p style="color: yellow;">⚡ Modo SNIPE activado (${tiempoSnipe}s extra)</p>`;
+
+            // Avisamos a los widgets del nuevo tiempo
             socket.emit("iniciar_snipe_cliente", tiempoSnipe);
-            socket.emit("activar_alerta_snipe_visual"); 
+
+            // 🛑 NUEVA EMISIÓN: Avisamos a los Widgets que inicien la ALERTA ROJA 🛑
+            socket.emit("activar_alerta_snipe_visual"); // <--- AÑADE ESTA LÍNEA
 
             // Reiniciamos el temporizador local solo con el tiempo de snipe
             tiempoActual = tiempoSnipe;
-            iniciarTimerLogic(); // ⬅️ REINICIAMOS: EL GANADOR NO SE ANUNCIA AQUÍ
+            iniciarTimerLogic();
 
         } 
         else {
-            // B) EL TIEMPO DE SNIPE (O EL TIEMPO REGULAR SIN SNIPE) TAMBIÉN TERMINÓ
-            
-            // 5. ANUNCIO FINAL Y LIMPIEZA
+            // B) NO HAY SNIPE (o el snipe ya terminó)
+            // ¡Aquí es donde ocurre la finalización automática!
+
             if (snipeActivado) {
                 logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (post-snipe).</p>`;
             } else {
                 logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (sin snipe).</p>`;
             }
 
-            // --- LÓGICA DE GANADOR CORREGIDA (SOLO SE EJECUTA AQUÍ) ---
-            const participantesArray = Object.values(participantes);
-            
-            if (participantesArray.length > 0) {
-                participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad)); 
-                
-                const ganador = participantesArray[0]; 
-                ganadoresHistorial.unshift(ganador); 
+            // --- INICIO DE LA LÓGICA MOVIDA DESDE 'FINALIZAR' ---
+            if (participantes.length > 0) {
+                const ganador = participantes[0]; // El primer elemento ya está ordenado
+                ganadoresHistorial.unshift(ganador); // Añadir al principio del historial
                 logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
                 actualizarGanadoresUI();
                 socket.emit("anunciar_ganador", ganador);
-                
             } else {
-                logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
-            }
-            // --- FIN LÓGICA DE GANADOR ---
-        }
-    }
+                 logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
+            }
+    }
 }
+} 
         function finalizar() {
     // 1. Esta función solo debe correr en el Dashboard (el "Maestro")
     if (!document.body.classList.contains('widget-mode')) {
