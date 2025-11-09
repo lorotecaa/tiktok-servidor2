@@ -384,8 +384,17 @@ if (Array.isArray(participantes)) {
     
     // 🛑 ESCRITURA DE TOTALES
     if (!isWidgetMode) {
-        document.querySelector('#totalParticipantes').textContent = participantesArray.length; // Usamos el array
-        document.querySelector('#totalDiamantes').textContent = totalDiamantes;
+        // 1. Apuntamos a los elementos por ID de forma explícita
+        const totalParticipantesEl = document.getElementById('totalParticipantes');
+        const totalDiamantesEl = document.getElementById('totalDiamantes');
+        
+        // 2. Verificamos que existan antes de escribir (más seguro)
+        if (totalParticipantesEl) {
+            totalParticipantesEl.textContent = participantesArray.length;
+        }
+        if (totalDiamantesEl) {
+            totalDiamantesEl.textContent = totalDiamantes;
+        }
     }
 }
         function obtenerGanador() {
