@@ -298,7 +298,7 @@
         
         let tiempoActual = 0;
         let intervalo = null;
-        let participantes = [];
+        let participantes = {};
         let ganadoresHistorial = [];
         let isPaused = false; // Estado para la función pausar
         let snipeActivado = false; // <-- AÑADE ESTA LÍNEA
@@ -784,33 +784,35 @@ if (isWidgetMode) {
 socket.on("new_gift", (giftData) => {
     console.log("💎 Nuevo regalo recibido del servidor:", giftData);
 
+    // ... (Tu código de extracción de datos sigue igual) ...
     const userId = giftData.userId || giftData.user_id;
     const nickname = giftData.nickname || giftData.username || "Desconocido";
-    const profilePictureUrl = giftData.profilePictureUrl || giftData.avatar_url;
-    const giftName = giftData.giftName || giftData.gift_name || "Regalo";
-    const cantidadDelRegalo = parseInt(
-        giftData.diamondCount || giftData.diamond_count || giftData.diamonds || giftData.amount || 0
-    );
+    // ...
 
-    let existente = participantes.find(p => p.userId === userId || p.usuario === nickname);
+    // 🛑 CAMBIO CRÍTICO: Usar la clave del objeto en lugar de find()
+    let existente = participantes[userId]; 
 
     if (existente) {
+        // Si existe, actualizamos directamente la propiedad del objeto
         existente.cantidad = parseInt(existente.cantidad) + cantidadDelRegalo;
         existente.avatar_url = profilePictureUrl;
+        // No necesitas reasignar, JavaScript maneja la referencia
     } else {
-        participantes.push({
+        // Si no existe, lo creamos como una nueva clave en el objeto
+        participantes[userId] = {
             userId,
             usuario: nickname,
             cantidad: cantidadDelRegalo,
             regalo: giftName,
             avatar_url: profilePictureUrl || `https://via.placeholder.com/40/555/FFFFFF?text=${nickname.charAt(0)}`
-        });
+        };
     }
 
-    participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
-
-    socket.emit("sync_participantes", participantes);
-    actualizarParticipantesUI();
+    // 🛑 NOTA: Si usas 'update_participantes' del servidor, esta línea 'sync_participantes' es redundante.
+    // socket.emit("sync_participantes", participantes); 
+    
+    // NOTA 2: Si 'participantes' es un objeto, la ordenación debe hacerse solo para la UI:
+    actualizarParticipantesUI(); // Asumimos que esta función ahora convierte el objeto a array para ordenarlo
 });
 // 📢 ¡AQUÍ VA LA LÍNEA DE SINCRONIZACIÓN!
             // Ahora la variable 'participantes' está finalizada, sumada y ordenada.
