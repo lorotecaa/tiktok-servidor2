@@ -415,36 +415,46 @@ if (Array.isArray(participantes)) {
         
         // --- LÓGICA DEL TEMPORIZADOR ---
         function iniciarTimerLogic() {
-            let tiempoInput = document.getElementById("tiempo");
-            // Solo resetea si el tiempo es 0 o indefinido (inicio)
-            if (tiempoActual <= 0) {
-                 tiempoActual = parseInt(tiempoInput ? tiempoInput.value : 200); // Usar 200 como default si no hay input
-            }
-
-
-            if (intervalo) clearInterval(intervalo);
-            
-            intervalo = setInterval(() => {
-                if (!isPaused && tiempoActual > 0) {
-                    tiempoActual--;
-                    const formattedTime = formatTime(tiempoActual);
-                    
                     // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
-                    if (!document.body.classList.contains('widget-mode')) {
-                        socket.emit('sync_time', tiempoActual); 
-                    }
-                    
-                    // 2. Actualizamos el display LOCAL del dashboard
-                    if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
+                    if (intervalo) clearInterval(intervalo);
+    
+    // 🛑 CRÍTICO: SOLO ASIGNA EL TIEMPO INICIAL SI tiempoActual ES CERO (es decir, es el inicio de la ronda)
+    if (tiempoActual <= 0) {
+        // Asumiendo que el ID del input del tiempo es 'tiempoInicialSegundos'
+        // Si el ID de tu input es "tiempo", usa: document.getElementById("tiempo")
+        const tiempoInputEl = document.getElementById("tiempoInicialSegundos"); 
+        const tiempoInicial = parseInt(tiempoInputEl ? tiempoInputEl.value : 10); // Usamos 10s como fallback
+        
+        // Asignar el valor del input, NO 0.
+        tiempoActual = tiempoInicial;
+    }
 
-                } else if (tiempoActual <= 0) {
-                     // Solo el dashboard detiene el tiempo
-                    if (!document.body.classList.contains('widget-mode')) {
-                        terminarTiempo();
-                    }
-                }
-            }, 1000);
+    // 2. Inicia el intervalo
+    intervalo = setInterval(() => {
+        if (!isPaused && subastaActiva) { // Asegura que solo cuente si está activo y no pausado
+            tiempoActual--;
+            const formattedTime = formatTime(tiempoActual);
+            
+            // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
+            if (!document.body.classList.contains('widget-mode')) {
+                socket.emit('sync_time', tiempoActual); 
+            }
+            
+            // 2. Actualizamos el display LOCAL del dashboard
+            if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
+
         }
+        
+        // 🛑 LÓGICA DE TERMINACIÓN (SOLO SI EL TIEMPO LLEGA A CERO)
+        if (tiempoActual <= 0 && !document.body.classList.contains('widget-mode')) {
+            // Detenemos el loop
+            clearInterval(intervalo);
+            intervalo = null;
+            // Llamamos a la lógica de snipe/finalización
+            terminarTiempo();
+        }
+    }, 1000);
+}
 
         // --- FUNCIONES DE CONTROL ---
         function iniciar() {
