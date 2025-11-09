@@ -415,37 +415,32 @@ if (Array.isArray(participantes)) {
         
         // --- LÓGICA DEL TEMPORIZADOR ---
         function iniciarTimerLogic() {
-            let tiempoInput = document.getElementById("tiempo");
-            // Solo resetea si el tiempo es 0 o indefinido (inicio)
-            if (tiempoActual <= 0) {
-                 tiempoActual = parseInt(tiempoInput ? tiempoInput.value : 200); // Usar 200 como default si no hay input
+    // 1. Limpia cualquier intervalo anterior para evitar duplicados
+    if (intervalo) {
+        clearInterval(intervalo);
+    }
+
+    // 2. Inicia el intervalo que se ejecuta cada segundo
+    intervalo = setInterval(() => {
+        if (!isPaused && subastaActiva) {
+            tiempoActual--; // Decrementa el tiempo
+
+            // 3. Sincroniza el tiempo restante con los widgets
+            socket.emit('sync_time', tiempoActual);
+
+            // 4. Actualiza la UI localmente
+            if (document.getElementById('tiempoRestante')) {
+                document.getElementById('tiempoRestante').textContent = formatTime(tiempoActual);
             }
 
-
-            if (intervalo) clearInterval(intervalo);
-            
-            intervalo = setInterval(() => {
-                if (!isPaused && tiempoActual > 0) {
-                    tiempoActual--;
-                    const formattedTime = formatTime(tiempoActual);
-                    
-                    // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
-                    if (!document.body.classList.contains('widget-mode')) {
-                        socket.emit('sync_time', tiempoActual); 
-                    }
-                    
-                    // 2. Actualizamos el display LOCAL del dashboard
-                    if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
-
-                } else if (tiempoActual <= 0) {
-                     // Solo el dashboard detiene el tiempo
-                    if (!document.body.classList.contains('widget-mode')) {
-                        terminarTiempo();
-                    }
-                }
-            }, 1000);
+            // 🛑 5. VERIFICACIÓN DEL CERO (LÓGICA CRÍTICA)
+            if (tiempoActual <= 0) {
+                // Si llega a cero, llama a la función que maneja el fin de tiempo/snipe
+                terminarTiempo(); // <-- ESTO LLAMA A LA LÓGICA IF/ELSE DE SNIPE
+            }
         }
-
+    }, 1000);
+}
         // --- FUNCIONES DE CONTROL ---
         function iniciar() {
     if (!document.body.classList.contains('widget-mode')) { 
