@@ -415,32 +415,37 @@ if (Array.isArray(participantes)) {
         
         // --- LÓGICA DEL TEMPORIZADOR ---
         function iniciarTimerLogic() {
-    // 1. Limpia cualquier intervalo anterior para evitar duplicados
-    if (intervalo) {
-        clearInterval(intervalo);
-    }
-
-    // 2. Inicia el intervalo que se ejecuta cada segundo
-    intervalo = setInterval(() => {
-        if (!isPaused && subastaActiva) {
-            tiempoActual--; // Decrementa el tiempo
-
-            // 3. Sincroniza el tiempo restante con los widgets
-            socket.emit('sync_time', tiempoActual);
-
-            // 4. Actualiza la UI localmente
-            if (document.getElementById('tiempoRestante')) {
-                document.getElementById('tiempoRestante').textContent = formatTime(tiempoActual);
-            }
-
-            // 🛑 5. VERIFICACIÓN DEL CERO (LÓGICA CRÍTICA)
+            let tiempoInput = document.getElementById("tiempo");
+            // Solo resetea si el tiempo es 0 o indefinido (inicio)
             if (tiempoActual <= 0) {
-                // Si llega a cero, llama a la función que maneja el fin de tiempo/snipe
-                terminarTiempo(); // <-- ESTO LLAMA A LA LÓGICA IF/ELSE DE SNIPE
+                 tiempoActual = parseInt(tiempoInput ? tiempoInput.value : 200); // Usar 200 como default si no hay input
             }
+
+
+            if (intervalo) clearInterval(intervalo);
+            
+            intervalo = setInterval(() => {
+                if (!isPaused && tiempoActual > 0) {
+                    tiempoActual--;
+                    const formattedTime = formatTime(tiempoActual);
+                    
+                    // 1. DASHBOARD EMITE LA HORA AL SERVIDOR (MAESTRO)
+                    if (!document.body.classList.contains('widget-mode')) {
+                        socket.emit('sync_time', tiempoActual); 
+                    }
+                    
+                    // 2. Actualizamos el display LOCAL del dashboard
+                    if (document.getElementById('tiempoRestante')) document.getElementById('tiempoRestante').textContent = formattedTime;
+
+                } else if (tiempoActual <= 0) {
+                     // Solo el dashboard detiene el tiempo
+                    if (!document.body.classList.contains('widget-mode')) {
+                        terminarTiempo();
+                    }
+                }
+            }, 1000);
         }
-    }, 1000);
-}
+
         // --- FUNCIONES DE CONTROL ---
         function iniciar() {
     if (!document.body.classList.contains('widget-mode')) { 
@@ -452,44 +457,28 @@ if (Array.isArray(participantes)) {
         if (!streamerIdActual) {
             alert("⚠️ ERROR: Debes escribir el ID Único (para Widget) antes de iniciar la subasta.");
             logDonacionesEl.innerHTML += `<p style="color: red;">🛑 ERROR: ID Único no especificado. No se puede iniciar la subasta.</p>`;
-            return; 
+            return; // Detiene la función aquí
         }
         
-        // Llama a la conexión.
+        // Llama a la conexión. La lógica de inicio debe ir DESPUÉS de la conexión.
         conectarDashboard(); 
 
         // 🛑 VALIDACIÓN 2: CRÍTICA. SOLO INICIAR SI EL ID ES VÁLIDO EN EL SERVIDOR
         if (!isConnectedValid) {
             alert("⚠️ ERROR: El ID no ha sido validado por el servidor. Revisa si hay un mensaje de error.");
-            return; 
+            return; // Detiene la función si el servidor ya marcó el ID como inválido
         }
         
         // --- Lógica de inicio (SOLO se ejecuta si isConnectedValid es true) ---
-        
-        // 🟢 CORRECCIÓN FINAL: LEER Y ASIGNAR EL TIEMPO DESDE EL INPUT
-        const tiempoInputEl = document.getElementById('tiempoInicialSegundos'); // ⬅️ ⚠️ VERIFICA ESTE ID EN TU HTML
-        const tiempoInicial = parseInt(tiempoInputEl?.value); 
-
-        // CRÍTICO: VALIDACIÓN DE TIEMPO
-        if (isNaN(tiempoInicial) || tiempoInicial <= 0) {
-            alert("⚠️ ERROR: El 'Tiempo inicial' debe ser un número positivo.");
-            return;
-        }
-
         snipeActivado = false; 
         subastaActiva = true; 
-        logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda (${tiempoInicial} segundos)...</p>`;
+        logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda...</p>`;
         
+        // Si el servidor valida el ID y llegamos aquí, entonces enviamos el evento
         socket.emit("iniciar_subasta"); 
         
         isPaused = false; 
-        tiempoActual = tiempoInicial; // ⬅️ ¡USA EL VALOR DIRECTO DEL INPUT!
-
-        // Reseteo de participantes y UI
-        participantes = {};
-        actualizarParticipantesUI();
-        // Si tienes la función, también la de ganadores: actualizarGanadoresUI(); 
-
+        tiempoActual = 0; 
         iniciarTimerLogic(); // Inicia el reloj maestro en el dashboard
     }
 }
