@@ -253,13 +253,17 @@
         <strong>📝 Historial de Eventos:</strong>
     </div>
 
-<div id="participantes" style="background: #27ae60; width: 350px; height: 400px; overflow-y: auto; margin: 20px;">
-    <h2>👥 Participantes (Ronda Actual)</h2>
-    <ul id="listaParticipantes"></ul>
+<div id="participantes" style="background: #27ae60; width: 350px; height: 400px; margin: 20px; display: flex; flex-direction: column;">
+    <h2 style="padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.1);">👥 Participantes (Ronda Actual)</h2>
     
-    <div class="totales">Total participantes: <span id="totalParticipantes">0</span></div>
-    <div class="totales">Diamantes donados: <span id="totalDiamantes">0</span></div>
-
+    <div id="lista-scroll" style="flex-grow: 1; overflow-y: auto;">
+        <ul id="listaParticipantes" style="padding: 0; margin: 0;"></ul>
+    </div>
+    
+    <div class="totales" style="padding: 10px; background: rgba(0,0,0,0.1); border-top: 1px solid rgba(0,0,0,0.1);">
+        <p style="margin: 0; font-weight: bold;">Total participantes: <span id="totalParticipantes">0</span></p>
+        <p style="margin: 5px 0 0 0; font-weight: bold;">Diamantes donados: <span id="totalDiamantes">0</span></p>
+    </div>
 </div>
 
     <div id="ganadores" style="background: #2c3e50; width: 350px; height: 400px; overflow-y: auto; margin: 20px;">
