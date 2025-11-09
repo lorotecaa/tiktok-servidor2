@@ -40,40 +40,39 @@ let subastaActiva = false;
 
 function configurarEventosTikTok(tiktokConn, streamerId, io) {
 
-    // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
-    tiktokConn.on("gift", (data) => {
-        
-        // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
-        if (subastaActiva === false) { 
-            // Opcional: puedes dejar un console.log aquí para debug
-            return; // Detiene la ejecución inmediatamente
-        }
+    // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
+    tiktokConn.on("gift", (data) => {
+        
+        // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
+        if (subastaActiva === false) { 
+            return; // Detiene la ejecución inmediatamente
+        }
 
-        // 🛑 FILTRO CRÍTICO 2: FILTRO DE REPETICIÓN (Bug TikFinity)
-        if (data.repeatEnd === false && data.repeatCount > 1) {
-            // Si la racha aún no ha terminado Y se está repitiendo, ignoramos
-            console.log(`[IGNORADO] Regalo repetido: ${data.giftName}`);
-            return; 
-        }
-
-        const userId = data.uniqueId;
-        const diamantes = data.diamondCount || 0;
-        
-        // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
-        if (diamantes > 0) {
-            if (participantes[userId]) {
-                // Existe: acumular
-                participantes[userId].cantidad += diamantes;
-            } else {
-                // Nuevo: crear
-                participantes[userId] = {
-                    userId: userId,
-                    usuario: data.nickname,
-                    cantidad: diamantes,
-                    avatar_url: data.profilePictureUrl
-                };
-            }
-        }
+        // 🚨 SOLUCIÓN FINAL BUG DE DUPLICIDAD 🚨
+        // Solo contamos si data.repeatEnd es TRUE (es el evento final de un regalo/racha).
+        if (data.repeatEnd === false) {
+            console.log(`[IGNORADO - Duplicidad] Ignorando evento intermedio/de racha para: ${data.giftName}`);
+            return; 
+        }
+        
+        const userId = data.uniqueId;
+        const diamantes = data.diamondCount || 0;
+        
+        // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
+        if (diamantes > 0) {
+            if (participantes[userId]) {
+                // Existe: acumular
+                participantes[userId].cantidad += diamantes;
+            } else {
+                // Nuevo: crear
+                participantes[userId] = {
+                    userId: userId,
+                    usuario: data.nickname,
+                    cantidad: diamantes,
+                    avatar_url: data.profilePictureUrl
+                };
+            }
+        }
 
         console.log(`🎁 [${streamerId}] ${data.nickname} envió ${data.giftName} - Total acumulado: ${participantes[userId]?.cantidad || diamantes} 💎`);
         
@@ -186,14 +185,21 @@ socket.on("reset_snipe_state_visual", () => {
     io.emit("reset_snipe_state_visual"); 
 });
 socket.on("finalizar_subasta", () => {
-    console.log("⏹️ Subasta finalizada (Regalos detenidos).");
-    subastaActiva = false; 
-    io.emit("subasta_finalizada");
+    console.log("⏹️ Final de tiempo regular. Iniciando tiempo extra (Snipe)...");
+    // 🛑 QUITAR: subastaActiva = false;
 
+    io.emit("subasta_finalizada"); 
+});
+socket.on("subasta_terminada_total", () => {
+    console.log("🛑 Subasta y tiempo extra FINALIZADOS. Deteniendo conteo.");
+    subastaActiva = false; // ✅ Ahora se pone en FALSE solo al final
+    // Opcional: io.emit("subasta_terminada_total"); si el widget necesita saber esto
+});
     // 🛑 IMPORTANTE: Se eliminó toda la lógica de cálculo y anuncio del ganador. 
     // Esa tarea es ahora responsabilidad EXCLUSIVA de la función terminarTiempo() 
     // en el lado del cliente (dashboard), asegurando que solo ocurra 
     // después de que el tiempo extra (Snipe) haya terminado.
+
   });
   socket.on("activar_alerta_snipe_visual", () => {
     console.log("⚡ ALERTA SNIPE ACTIVADA");
@@ -214,7 +220,6 @@ socket.on("desactivar_alerta_snipe_visual", () => {
     console.log("🧹 Limpiando listas...");
     io.emit("limpiar_listas_clientes");
   });
-});
 
 // ===============================
 // 🚀 INICIAR SERVIDOR
