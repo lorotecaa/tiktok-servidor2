@@ -558,26 +558,28 @@ function conectarDashboard() {
             tiempoActual = tiempoSnipe;
             iniciarTimerLogic();
 
-        } 
-        else {
-            // B) NO HAY SNIPE (o el snipe ya terminó)
-            // ¡Aquí es donde ocurre la finalización automática!
+        // 5. ANUNCIO FINAL Y LIMPIEZA
+            if (snipeActivado) {
+                logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (post-snipe).</p>`;
+            } else {
+                logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (sin snipe).</p>`;
+            }
 
-            if (snipeActivado) {
-                logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (post-snipe).</p>`;
-            } else {
-                logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (sin snipe).</p>`;
-            }
-
-            // --- INICIO DE LA LÓGICA MOVIDA DESDE 'FINALIZAR' ---
-            if (participantes.length > 0) {
-                const ganador = participantes[0]; // El primer elemento ya está ordenado
-                ganadoresHistorial.unshift(ganador); // Añadir al principio del historial
-                logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
-                actualizarGanadoresUI();
-                socket.emit("anunciar_ganador", ganador);
-            } else {
-                 logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
+            // --- LÓGICA DE GANADOR CORREGIDA (SOLO SE EJECUTA AQUÍ) ---
+            const participantesArray = Object.values(participantes); // 🛑 CRÍTICO: Convertir el objeto a array
+            
+            if (participantesArray.length > 0) {
+                // Ordenar el array convertido para encontrar al ganador
+                participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad)); 
+                
+                const ganador = participantesArray[0]; 
+                ganadoresHistorial.unshift(ganador); 
+                logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
+                actualizarGanadoresUI();
+                socket.emit("anunciar_ganador", ganador);
+                
+            } else {
+                logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
             }
     }
 }
@@ -606,19 +608,21 @@ function conectarDashboard() {
         logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada manualmente.</p>`;
 
         // 6. Procesar al ganador (si existe)
-        if (participantes.length > 0) {
-                        
-            participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad)); // Ordena de mayor a menor (con parseInt)
+        const participantesArray = Object.values(participantes); // 🛑 CRÍTICO: Convertir a array
 
-            const ganador = participantes[0]; // Ahora sí, el [0] es el que más donó
-            ganadoresHistorial.unshift(ganador); 
-            logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
-            actualizarGanadoresUI();
-            socket.emit("anunciar_ganador", ganador); // Envía al ganador correcto
-        
-        } else {
-             logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
-        }
+        if (participantesArray.length > 0) { // 🛑 Usamos la longitud del array
+
+            participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad)); // Ordena de mayor a menor
+
+            const ganador = participantesArray[0]; // Ahora sí, el [0] es el que más donó
+            ganadoresHistorial.unshift(ganador); 
+            logDonacionesEl.innerHTML += `<p style="color: gold;">🏆 ¡Ganador guardado: ${ganador.usuario} con ${ganador.cantidad} diamantes!</p>`;
+            actualizarGanadoresUI();
+            socket.emit("anunciar_ganador", ganador); // Envía al ganador correcto
+        
+        } else {
+             logDonacionesEl.innerHTML += `<p style="color: gray;">ℹ️ No hubo participantes en esta ronda.</p>`;
+        }
 
         // 7. APAGAR EL INTERRUPTOR Y LIMPIAR (SIEMPRE)
         subastaActiva = false; // <--- LUGAR CORRECTO (Fuera del if/else del ganador)
