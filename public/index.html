@@ -452,28 +452,40 @@ if (Array.isArray(participantes)) {
         if (!streamerIdActual) {
             alert("⚠️ ERROR: Debes escribir el ID Único (para Widget) antes de iniciar la subasta.");
             logDonacionesEl.innerHTML += `<p style="color: red;">🛑 ERROR: ID Único no especificado. No se puede iniciar la subasta.</p>`;
-            return; // Detiene la función aquí
+            return; 
         }
         
-        // Llama a la conexión. La lógica de inicio debe ir DESPUÉS de la conexión.
+        // Llama a la conexión.
         conectarDashboard(); 
 
         // 🛑 VALIDACIÓN 2: CRÍTICA. SOLO INICIAR SI EL ID ES VÁLIDO EN EL SERVIDOR
         if (!isConnectedValid) {
             alert("⚠️ ERROR: El ID no ha sido validado por el servidor. Revisa si hay un mensaje de error.");
-            return; // Detiene la función si el servidor ya marcó el ID como inválido
+            return; 
         }
         
         // --- Lógica de inicio (SOLO se ejecuta si isConnectedValid es true) ---
+        
+        // 🟢 CRÍTICO: LEER Y ASIGNAR EL TIEMPO INICIAL 
+        const tiempoRondaInput = document.getElementById('tiempoRonda'); // ⬅️ Revisa este ID
+        // Leer el valor y convertir a segundos. Usar 300 segundos (5 minutos) si está vacío.
+        const tiempoInicialSegundos = parseInt(tiempoRondaInput?.value) * 60 || 300; 
+
         snipeActivado = false; 
         subastaActiva = true; 
-        logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda...</p>`;
+        logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda (${tiempoInicialSegundos / 60} minutos)...</p>`;
         
         // Si el servidor valida el ID y llegamos aquí, entonces enviamos el evento
         socket.emit("iniciar_subasta"); 
         
         isPaused = false; 
-        tiempoActual = 0; 
+        tiempoActual = tiempoInicialSegundos; // ⬅️ ¡CORRECCIÓN APLICADA! Ahora el tiempo es válido.
+
+        // 🟢 Adicionalmente, reseteamos la lista de participantes para la nueva ronda
+        participantes = {};
+        actualizarParticipantesUI();
+        actualizarGanadoresUI(); 
+
         iniciarTimerLogic(); // Inicia el reloj maestro en el dashboard
     }
 }
