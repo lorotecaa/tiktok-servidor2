@@ -325,80 +325,71 @@ if (Array.isArray(participantes)) {
         }
         
         function actualizarParticipantesUI() {
-    
-    // 🛑 PASO 1 CRÍTICO: CONVERTIR EL OBJETO GLOBAL 'participantes' A UN ARRAY
-    // Esto es necesario para poder usar .sort() y .slice()
+    // 🛑 PASO 1: CONVERTIR EL OBJETO PARTICIPANTES A UN ARRAY TEMPORAL
     const participantesArray = Object.values(participantes);
     
-    // 🛑 PASO 2: ORDENAR EL ARRAY
-    // NOTA: Usamos 'participantesArray' y la propiedad 'cantidad' (que es la correcta)
+    // PASO 2: Ordenar el nuevo array (participantesArray)
     participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
-    
-    // ----------------------------------------------------------------------
-    // El resto de la función es ahora mucho más limpio, usando 'participantesArray'
-    // ----------------------------------------------------------------------
-    
+
+    // 🛑 PASO 3 CRÍTICO: CALCULAR TOTALES
+    let totalDiamantes = 0;
+    participantesArray.forEach(p => {
+        totalDiamantes += parseInt(p.cantidad) || 0; // Suma de todos los diamantes
+    });
+
+    // -----------------------------------------------------------
+    // Lógica de dibujo de lista (Ya estaba correcta)
+    // -----------------------------------------------------------
+    const listaDashboard = document.getElementById("listaParticipantes");
+    const listaWidget = document.getElementById("listaParticipantes-widget");
+    if (listaDashboard) listaDashboard.innerHTML = "";
+    if (listaWidget) listaWidget.innerHTML = "";
+
+    // PASO 4: Recorrer el array ordenado y dibujar (MANTENER TU CÓDIGO)
+    // ... (Tu código para recorrer participantesArray y dibujar li's) ...
+    participantesArray.forEach((p, index) => { 
+        // ... (Tu código de itemHTML aquí) ...
+        const itemHTML = `
+            <li class="participante-item">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="rank">${index + 1}.</span>
+                    <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=U'}"
+                        alt="${p.usuario || 'Usuario'}" 
+                        style="width:40px; height:40px; border-radius:50%;"> 
+                    
+                    <span class="username" title="${p.usuario}"> ${p.usuario}
+                    </span>
+                </div>
+                <div class="coins">${p.cantidad} 💎</div>
+            </li>
+        `;
+        // ... (Tu lógica para añadir a listaDashboard y listaWidget) ...
+        if (listaDashboard && !document.body.classList.contains('widget-mode')) {
+            listaDashboard.innerHTML += itemHTML;
+        }
+        if (listaWidget && document.body.classList.contains('widget-mode')) {
+            // Solo dibujamos el top 5 para el widget, pero para esta prueba, mantenemos todos.
+            listaWidget.innerHTML += itemHTML;
+        }
+    });
+
+    // 🛑 PASO 5 CRÍTICO: ACTUALIZAR LOS TOTALES DE LA TABLA
     const isWidgetMode = document.body.classList.contains('widget-mode');
     
-    // 1. Apuntamos a las listas correctas
-    const listaDashboardEl = document.getElementById('listaParticipantes');
-    const listaWidgetEl = document.getElementById('listaParticipantes-widget'); 
-
-    // 2. Limpiamos ambas listas
-    if (listaDashboardEl) listaDashboardEl.innerHTML = "";
-    if (listaWidgetEl) listaWidgetEl.innerHTML = "";
-    
-    let totalDiamantes = 0;
-    // Utilizamos el array ordenado
-    const topN = participantesArray.slice(0, 5); // Tomamos el Top 5 para el widget
-
-    // Iteramos sobre el Array temporal ordenado
-    participantesArray.forEach((p, index) => {
-        const liDashboard = document.createElement("li");
-        
-        // Formato de Dashboard
-        liDashboard.textContent = `${p.usuario} - ${p.cantidad} 💎`;
-        if (listaDashboardEl) listaDashboardEl.appendChild(liDashboard);
-
-        // Formato de Widget (Solo el Top 5)
-        if (index < 5 && listaWidgetEl) {
-            const liWidget = document.createElement("li");
-            const rango = index + 1;
-            
-            const avatarUrl = p.avatar_url || 'https://via.placeholder.com/30/555/FFFFFF?text=A'; 
-
-            liWidget.innerHTML = `
-                <div class="rank-icon">${rango}</div>
-                <div class="user-info">
-                    <div class="user-avatar"><img src="${avatarUrl}" alt="Avatar"></div>
-                    <span class="username">${p.usuario}</span>
-                </div>
-                <span class="coins">${p.cantidad} 🪙</span>
-            `;
-            listaWidgetEl.appendChild(liWidget);
-        }
-        
-        // 🛑 CORRECCIÓN: Suma de Diamantes Asegurada (usa parseInt)
-        totalDiamantes += parseInt(p.cantidad) || 0; 
-    });
-    
-    // 🛑 ESCRITURA DE TOTALES
     if (!isWidgetMode) {
-    // 🛑 USAMOS document.querySelector para buscar el elemento con el ID
-    const totalParticipantesEl = document.querySelector('#totalParticipantes');
-    const totalDiamantesEl = document.querySelector('#totalDiamantes');
-    
-    // Si aún así no funciona (lo cual es raro):
-    // Puedes intentar buscar por el span dentro del div.totales
-    // const totalParticipantesEl = document.querySelector('.totales #totalParticipantes');
-    
-    if (totalParticipantesEl) {
-        totalParticipantesEl.textContent = participantesArray.length;
+        // Usamos el selector robusto. Si falla, el problema es el HTML.
+        const totalParticipantesEl = document.querySelector('span#totalParticipantes');
+        const totalDiamantesEl = document.querySelector('span#totalDiamantes');
+        
+        if (totalParticipantesEl) {
+            // USAMOS LA LONGITUD DEL ARRAY CALCULADO EN ESTA FUNCIÓN
+            totalParticipantesEl.textContent = participantesArray.length; 
+        }
+        if (totalDiamantesEl) {
+            // USAMOS EL TOTAL CALCULADO EN ESTA FUNCIÓN
+            totalDiamantesEl.textContent = totalDiamantes; 
+        }
     }
-    if (totalDiamantesEl) {
-        totalDiamantesEl.textContent = totalDiamantes;
-    }
-}
 }
         function obtenerGanador() {
     if (participantes.length === 0) return null;
@@ -630,11 +621,6 @@ function conectarDashboard() {
         socket.emit("limpiar_listas"); // (Esta es la única llamada que debe estar)
     }
 }
-        // --- 👇 ¡AQUÍ ESTÁ EL ARREGLO! 👇 ---
-        // Manda la orden de limpiar SIEMPRE, 
-        // sin importar si hubo ganador o no.
-        socket.emit("limpiar_listas");
-        // --- 👆 FIN DEL ARREGLO 👆 ---
           
         function restart() {
     if (!document.body.classList.contains('widget-mode')) { // Solo el dashboard puede reiniciar
