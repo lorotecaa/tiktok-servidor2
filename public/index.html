@@ -1143,6 +1143,14 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("🟢 Dashboard normal.");
     }
 });
+socket.on("reset_snipe_state_visual", () => {
+    // 🛑 ESTO SOLUCIONA EL COLOR PERSISTENTE 🛑
+    isSnipeModeVisual = false; 
+
+    // Opcional: Si el manejador de 'desactivar_alerta_snipe_visual' no funciona, 
+    // puedes forzar la remoción de la clase aquí de nuevo:
+    // document.body.classList.remove('snipe-alert'); 
+});
     </script>
 </body>
 </html>
