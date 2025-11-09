@@ -56,7 +56,7 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
         }
         
         const userId = data.uniqueId;
-        const diamantes = data.diamondCount || 0;
+        const diamantes = data.totalDiamondCount || 0;
         
         // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
         if (diamantes > 0) {
