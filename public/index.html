@@ -842,23 +842,27 @@ socket.on("limpiar_listas_clientes", () => {
 // ===============================
 // 🧭 Función para actualizar la UI (debe ir FUERA de socket.on)
 // ===============================
-function actualizarParticipantesUI() {
+    function actualizarParticipantesUI() {
     // 🛑 PASO 1: CONVERTIR EL OBJETO PARTICIPANTES A UN ARRAY TEMPORAL
     const participantesArray = Object.values(participantes);
     
     // PASO 2: Ordenar el nuevo array (participantesArray)
-    // Usamos el array temporal, no el objeto global 'participantes'
     participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
 
-    // 
+    // 🛑 PASO 3: INICIALIZAR CONTADOR DE DIAMANTES
+    let totalDiamantes = 0; 
 
+    // 4. Limpiar listas
     const listaDashboard = document.getElementById("listaParticipantes");
     const listaWidget = document.getElementById("listaParticipantes-widget");
     if (listaDashboard) listaDashboard.innerHTML = "";
     if (listaWidget) listaWidget.innerHTML = "";
 
-    // PASO 3: Recorrer el array ordenado
-    participantesArray.forEach((p, index) => { // <-- Usamos participantesArray aquí
+    // PASO 5: Recorrer el array ordenado y SUMAR DIAMANTES
+    participantesArray.forEach((p, index) => { 
+        // ➡️ ¡SUMA DE DIAMANTES AQUÍ!
+        totalDiamantes += parseInt(p.cantidad) || 0; 
+        
         const itemHTML = `
             <li class="participante-item">
                 <div style="display:flex; align-items:center; gap:10px;">
@@ -882,6 +886,24 @@ function actualizarParticipantesUI() {
             listaWidget.innerHTML += itemHTML;
         }
     });
+
+    // 🛑 PASO 6: ACTUALIZAR LOS CONTADORES (solo en Dashboard)
+    const isWidgetMode = document.body.classList.contains('widget-mode');
+    
+    if (!isWidgetMode) {
+        // Buscamos los elementos por ID/Selector
+        const totalParticipantesEl = document.querySelector('span#totalParticipantes');
+        const totalDiamantesEl = document.querySelector('span#totalDiamantes');
+        
+        if (totalParticipantesEl) {
+            // USAMOS LA LONGITUD DEL ARRAY
+            totalParticipantesEl.textContent = participantesArray.length; 
+        }
+        if (totalDiamantesEl) {
+            // USAMOS LA SUMA TOTAL
+            totalDiamantesEl.textContent = totalDiamantes; 
+        }
+    }
 }
 
 function abrirWidget() {
