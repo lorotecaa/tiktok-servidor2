@@ -322,53 +322,66 @@
         }
         
         function actualizarParticipantesUI() {
-    participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
     
-    const isWidgetMode = document.body.classList.contains('widget-mode');
+    // 🛑 PASO 1 CRÍTICO: CONVERTIR EL OBJETO GLOBAL 'participantes' A UN ARRAY
+    // Esto es necesario para poder usar .sort() y .slice()
+    const participantesArray = Object.values(participantes);
     
-    // 1. Apuntamos a las listas correctas
-    const listaDashboardEl = document.getElementById('listaParticipantes');
-    const listaWidgetEl = document.getElementById('listaParticipantes-widget'); 
-
-    // 2. Limpiamos ambas listas
-    if (listaDashboardEl) listaDashboardEl.innerHTML = "";
-    if (listaWidgetEl) listaWidgetEl.innerHTML = "";
+    // 🛑 PASO 2: ORDENAR EL ARRAY
+    // NOTA: Usamos 'participantesArray' y la propiedad 'cantidad' (que es la correcta)
+    participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
     
-    let totalDiamantes = 0;
-    const topN = participantes.slice(0, 5); // Tomamos el Top 5 para el widget
-
-    participantes.forEach((p, index) => {
-        const liDashboard = document.createElement("li");
-        
-        // Formato de Dashboard
-        liDashboard.textContent = `${p.usuario} - ${p.cantidad} 💎`;
-        if (listaDashboardEl) listaDashboardEl.appendChild(liDashboard);
-
-        // Formato de Widget (Solo el Top 5)
-        if (index < 5 && listaWidgetEl) {
-            const liWidget = document.createElement("li");
-            const rango = index + 1;
-            
-            const avatarUrl = p.avatar_url || 'https://via.placeholder.com/30/555/FFFFFF?text=A'; 
-
-            liWidget.innerHTML = `
-                <div class="rank-icon">${rango}</div>
-                <div class="user-info">
-                    <div class="user-avatar"><img src="${avatarUrl}" alt="Avatar"></div>
-                    <span class="username">${p.usuario}</span>
-                </div>
-                <span class="coins">${p.cantidad} 🪙</span>
-            `;
-            listaWidgetEl.appendChild(liWidget);
-        }
-        
-        totalDiamantes += p.cantidad;
-    });
+    // ----------------------------------------------------------------------
+    // El resto de la función es ahora mucho más limpio, usando 'participantesArray'
+    // ----------------------------------------------------------------------
     
-    if (!isWidgetMode) {
-         document.querySelector('#totalParticipantes').textContent = participantes.length;
-         document.querySelector('#totalDiamantes').textContent = totalDiamantes;
-    }
+    const isWidgetMode = document.body.classList.contains('widget-mode');
+    
+    // 1. Apuntamos a las listas correctas
+    const listaDashboardEl = document.getElementById('listaParticipantes');
+    const listaWidgetEl = document.getElementById('listaParticipantes-widget'); 
+
+    // 2. Limpiamos ambas listas
+    if (listaDashboardEl) listaDashboardEl.innerHTML = "";
+    if (listaWidgetEl) listaWidgetEl.innerHTML = "";
+    
+    let totalDiamantes = 0;
+    // Utilizamos el array ordenado
+    const topN = participantesArray.slice(0, 5); // Tomamos el Top 5 para el widget
+
+    // Iteramos sobre el Array temporal ordenado
+    participantesArray.forEach((p, index) => {
+        const liDashboard = document.createElement("li");
+        
+        // Formato de Dashboard
+        liDashboard.textContent = `${p.usuario} - ${p.cantidad} 💎`;
+        if (listaDashboardEl) listaDashboardEl.appendChild(liDashboard);
+
+        // Formato de Widget (Solo el Top 5)
+        if (index < 5 && listaWidgetEl) {
+            const liWidget = document.createElement("li");
+            const rango = index + 1;
+            
+            const avatarUrl = p.avatar_url || 'https://via.placeholder.com/30/555/FFFFFF?text=A'; 
+
+            liWidget.innerHTML = `
+                <div class="rank-icon">${rango}</div>
+                <div class="user-info">
+                    <div class="user-avatar"><img src="${avatarUrl}" alt="Avatar"></div>
+                    <span class="username">${p.usuario}</span>
+                </div>
+                <span class="coins">${p.cantidad} 🪙</span>
+            `;
+            listaWidgetEl.appendChild(liWidget);
+        }
+        
+        totalDiamantes += p.cantidad;
+    });
+    
+    if (!isWidgetMode) {
+         document.querySelector('#totalParticipantes').textContent = participantesArray.length; // Usamos el array
+         document.querySelector('#totalDiamantes').textContent = totalDiamantes;
+    }
 }
         function obtenerGanador() {
     if (participantes.length === 0) return null;
@@ -782,14 +795,15 @@ if (isWidgetMode) {
     // (Esto corre en AMBOS: Dashboard y Widget)
 // ===============================
 socket.on("new_gift", (giftData) => {
-    // 🛑 IMPORTANTE: Ya no se hace el conteo aquí. El servidor lo hará.
-    console.log("💎 Nuevo regalo recibido del servidor:", giftData);
+    // ✅ LÓGICA DE CLIENTE SIMPLIFICADA (SOLO LOGS)
+    const nickname = giftData.nickname || giftData.username || "Desconocido";
+    const giftName = giftData.giftName || giftData.gift_name || "Regalo";
+    const diamantes = giftData.diamondCount || giftData.diamond_count || giftData.diamonds || giftData.amount || 0;
     
-    // Si necesitas logs en el Dashboard:
-    logDonacionesEl.innerHTML += `<p style="color: cyan;">🎁 ${giftData.nickname || giftData.username} envió ${giftData.giftName || giftData.gift_name} (${giftData.diamondCount || giftData.diamond_count} 💎)</p>`;
+    logDonacionesEl.innerHTML += `<p style="color: cyan;">🎁 ${nickname} envió ${giftName} (${diamantes} 💎)</p>`;
     logDonacionesEl.scrollTop = logDonacionesEl.scrollHeight;
-    
-    // NOTA: La actualización de la UI se hará en el nuevo listener 'update_participantes'
+
+    // La actualización de la UI se manejará en 'update_participantes'
 });
 // 📢 ¡AQUÍ VA LA LÍNEA DE SINCRONIZACIÓN!
             // Ahora la variable 'participantes' está finalizada, sumada y ordenada.
