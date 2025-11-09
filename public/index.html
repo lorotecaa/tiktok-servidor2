@@ -641,7 +641,7 @@ function conectarDashboard() {
         }
         
         // 4. Avisar al servidor que la subasta se detenga INMEDIATAMENTE
-        socket.emit('finalizar_subasta'); 
+        socket.emit('subasta_terminada_total');
 
         // 5. Loggear que fue manual
         logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada manualmente.</p>`;
