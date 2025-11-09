@@ -476,7 +476,6 @@ function showWinnerPopup(ganador) {
 // Función para regresar a la vista de la tabla del widget
 function returnToWidgetTable() {
     // 1. Inicia la animación de salida del popup
-    const winnerPopup = document.getElementById('winner-popup'); 
     winnerPopup.style.opacity = 0;
     document.getElementById('winner-content').style.transform = 'scale(0.7)';
 
@@ -488,9 +487,8 @@ function returnToWidgetTable() {
         document.getElementById('participantes-widget').style.display = 'block';
         document.getElementById('tiempoBox-widget').style.display = 'flex';
         
-        // 🖼️ ¡CRÍTICO! DIBUJAR AL GANADOR AHORA QUE LA TABLA ES VISIBLE.
-        actualizarParticipantesUI(); // ⬅️ AÑADE ESTA LÍNEA
-        
+        // La tabla se refresca automáticamente porque el ganador permanece en 'participantes'
+        // hasta que se presione 'Iniciar'.
     }, 500); 
 }
         // --- FUNCIONES DE CONTROL ---
@@ -522,6 +520,8 @@ function returnToWidgetTable() {
         snipeActivado = false; // ESTO SOLUCIONA QUE LA SEGUNDA RONDA NO INICIE EN SNIPE
         
         // 🛑 LIMPIEZA 2: Limpiar lista local de participantes y la UI
+        participantes = {}; // Limpia la variable global local
+        actualizarParticipantesUI(); // Actualiza el dashboard (muestra Total: 0, etc.)
         
         // 🛑 LIMPIEZA 3: Ocultar el modal del ganador de la ronda anterior (si es que existe)
         if (typeof ocultarGanadorUI === 'function') {
@@ -547,10 +547,6 @@ function returnToWidgetTable() {
 socket.emit("desactivar_alerta_snipe_visual");
 // 🛑 LIMPIEZA 5: RESET DE BANDERA LÓGICA (NUEVA LÍNEA AÑADIDA) 🛑
         socket.emit("reset_snipe_state_visual"); // ⬅️ **AÑADIR AQUÍ**
-// 🏆 CRÍTICO FINAL: BORRAR AL GANADOR DE LA RONDA ANTERIOR EN EL SERVIDOR
-// --------------------------------------------------------------------
-socket.emit("limpiar_listas"); // ⬅️ ¡AÑADE ESTA LÍNEA AQUÍ!
-// --------------------------------------------------------------------
         // --- Lógica de inicio (SOLO se ejecuta si isConnectedValid es true) ---
         subastaActiva = true; 
         logDonacionesEl.innerHTML += `<p style="color: yellow;">▶️ Iniciando ronda...</p>`;
