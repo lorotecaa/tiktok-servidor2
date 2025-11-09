@@ -494,6 +494,9 @@ if (Array.isArray(participantes)) {
             const modalGanador = document.getElementById('modalGanador'); // Asumiendo este ID
             if (modalGanador) modalGanador.style.display = 'none';
         }
+        // 🛑 LIMPIEZA 4: CRÍTICA VISUAL (AÑADE ESTA LÍNEA) 🛑
+// Esto envía la orden al Widget de quitar el color rojo y el texto de alerta.
+socket.emit("desactivar_alerta_snipe_visual");
 
         // --- Lógica de inicio (SOLO se ejecuta si isConnectedValid es true) ---
         subastaActiva = true; 
@@ -1090,7 +1093,18 @@ socket.on("activar_alerta_snipe_visual", () => {
     // Cuando el Dashboard dice que el Snipe comenzó, activamos la bandera visual
     isSnipeModeVisual = true;
 });
+// CÓDIGO EN EL CLIENTE/WIDGET (donde manejas el socket.on)
 
+socket.on("desactivar_alerta_snipe_visual", () => {
+    // 1. Quitar la clase CSS que pone el color rojo al tiempo
+    document.body.classList.remove('snipe-alert'); 
+    
+    // 2. Opcional: Limpiar o restaurar el texto que dice "Tiempo por delay de live"
+    const subtextElWidget = document.getElementById('subtext-tiempo'); // O el ID que uses para ese texto
+    if (subtextElWidget) {
+        subtextElWidget.textContent = 'Tiempo por delay de live'; // O el texto original
+    }
+});
 socket.on('finalizar_subasta', () => {
     // Cuando la subasta termina, la bandera se apaga (además de la limpieza)
     isSnipeModeVisual = false; 
