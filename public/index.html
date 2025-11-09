@@ -597,7 +597,10 @@ function conectarDashboard() {
             } else {
                 logDonacionesEl.innerHTML += `<p style="color: red;">⏹️ Ronda finalizada automáticamente (sin snipe).</p>`;
             }
-
+// 🛑 AÑADIR AQUÍ: Notificar al Servidor para que ponga subastaActiva = false
+            socket.emit("subasta_terminada_total"); 
+            // Esto detiene los regalos en el servidor permanentemente.
+            
             // --- LÓGICA DE ANUNCIAR GANADOR ---
             const participantesArray = Object.values(participantes); 
             
