@@ -50,13 +50,13 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
 
         // 🚨 SOLUCIÓN FINAL BUG DE DUPLICIDAD 🚨
         // Solo contamos si data.repeatEnd es TRUE (es el evento final de un regalo/racha).
-        if (data.repeatEnd === false) {
+        if (data.giftType === 1 && data.repeatEnd === false) {
             console.log(`[IGNORADO - Duplicidad] Ignorando evento intermedio/de racha para: ${data.giftName}`);
             return; 
         }
         
         const userId = data.uniqueId;
-        const diamantes = data.totalDiamondCount || 0;
+        const diamantes = data.totalDiamondCount || 0; // ✅
         
         // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
         if (diamantes > 0) {
