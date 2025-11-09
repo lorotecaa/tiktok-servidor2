@@ -35,7 +35,7 @@ app.get("/widget", (req, res) => {
 // ⚙️ CONEXIONES TIKTOK POR USUARIO
 // ===============================
 const conexionesTikTok = {}; // Guardará conexiones por streamerId
-
+let participantes = {};
 io.on("connection", (socket) => {
   console.log("🟢 Cliente conectado:", socket.id);
 
@@ -127,33 +127,50 @@ io.on("connection", (socket) => {
     console.log("⏹️ Subasta finalizada.");
     io.emit("subasta_finalizada");
   });
-socket.on("new_tiktok_gift", (giftData) => {
-    
-    // 🛑 FILTRO DE REPETICIÓN CRÍTICO (Debes tener esta información en giftData)
-    // Si tu servicio externo te da 'repeatEnd' o 'giftType', úsalo aquí. 
-    // Si no, debes asumir que cada evento es un regalo y solo contar uno.
+  // 🎁 Evento: regalo recibido
+      tiktokConn.on("gift", (data) => {
+        
+        // 🛑 FILTRO CRÍTICO: Ignorar las repeticiones para contar solo el evento final
+        if (data.repeatEnd === false && data.giftType !== 1) {
+            // Si no es el final de una racha o un regalo de un solo tiro, lo ignoramos.
+            return; 
+        }
 
-    // 1. Usa la clave única (Objeto participantes)
-    const userId = giftData.userId || giftData.user_id;
-    const diamantes = giftData.diamondCount || giftData.diamond_count;
+        const userId = data.uniqueId;
+        const diamantes = data.diamondCount || 0;
+        
+        // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
+        if (diamantes > 0) {
+            if (participantes[userId]) {
+                // Existe: acumular
+                participantes[userId].cantidad += diamantes;
+            } else {
+                // Nuevo: crear
+                participantes[userId] = {
+                    userId: userId,
+                    usuario: data.nickname,
+                    cantidad: diamantes,
+                    avatar_url: data.profilePictureUrl
+                };
+            }
+        }
 
-    if (diamantes > 0) {
-        if (participantes[userId]) {
-            participantes[userId].cantidad += diamantes;
-        } else {
-            participantes[userId] = {
-                // ... (Inicializa el participante aquí)
-                cantidad: diamantes
-            };
-        }
-    }
+        console.log(`🎁 [${streamerId}] ${data.nickname} envió ${data.giftName} - Total acumulado: ${participantes[userId].cantidad || diamantes} 💎`);
+        
+        // 2. Notificar al cliente: Enviar la lista de participantes procesada
+        io.to(streamerId).emit("update_participantes", participantes);
+        
+        // 3. Log para el dashboard (para el log visual de new_gift en el cliente)
+        io.to(streamerId).emit("new_gift", {
+          userId: userId,
+          nickname: data.nickname,
+          giftName: data.giftName,
+          diamondCount: diamantes 
+        });
 
-    // 2. Emitir la lista ya procesada al cliente
-    io.emit("update_participantes", participantes);
-    
-    // 3. Lógica de snipe (si aplica)
-    // ...
-})
+        // 4. Lógica de Snipe (Si aplica: si el tiempo es bajo y hay donación, reinicia el tiempo)
+        // ...
+      });
   socket.on("activar_alerta_snipe_visual", () => {
     console.log("⚡ ALERTA SNIPE ACTIVADA");
     io.emit("activar_alerta_snipe_visual");
