@@ -56,8 +56,14 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
         }
         
         const userId = data.uniqueId;
-        const diamantes = data.totalDiamondCount || 0; // ✅
-        
+        let diamantes = data.totalDiamondCount || 0;
+        // Si totalDiamondCount sigue siendo 0 (fallo de la librería en regalos de racha), 
+// usamos la cantidad unitaria (diamondCount) multiplicada por el conteo de la racha.
+// Solo hacemos esto si NO es 0 y es el evento final de una racha.
+if (diamantes === 0 && data.diamondCount > 0 && data.repeatEnd === true) {
+    diamantes = data.diamondCount * (data.repeatCount || 1);
+    console.log(`[FALLBACK] Calculando diamantes por racha: ${diamantes} 💎`);
+}
         // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
         if (diamantes > 0) {
             if (participantes[userId]) {
