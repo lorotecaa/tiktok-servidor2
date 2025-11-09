@@ -172,10 +172,11 @@ io.on("connection", (socket) => {
     io.emit("activar_alerta_snipe_visual");
   });
 
-  socket.on("anunciar_ganador", (ganador) => {
-    console.log("🏆 Ganador:", ganador);
-    io.emit("anunciar_ganador", ganador);
-  });
+ socket.on("anunciar_ganador", (ganador) => {
+    console.log("🏆 Ganador:", ganador);
+    // 🛑 El servidor RE-EMITE la señal a todos los clientes (incluyendo el widget)
+    io.emit("anunciar_ganador", ganador);
+  });
 
   socket.on("limpiar_listas", () => {
     console.log("🧹 Limpiando listas...");
