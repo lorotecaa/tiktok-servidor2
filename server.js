@@ -200,7 +200,7 @@ socket.on("subasta_terminada_total", () => {
     console.log("⚡ ALERTA SNIPE ACTIVADA");
     io.emit("activar_alerta_snipe_visual");
   });
-});
+
  socket.on("anunciar_ganador", (ganador) => {
     console.log("🏆 Ganador:", ganador);
     // 🛑 El servidor RE-EMITE la señal a todos los clientes (incluyendo el widget)
@@ -215,7 +215,7 @@ socket.on("desactivar_alerta_snipe_visual", () => {
     console.log("🧹 Limpiando listas...");
     io.emit("limpiar_listas_clientes");
   });
-
+});
 // ===============================
 // 🚀 INICIAR SERVIDOR
 // ===============================
