@@ -38,7 +38,7 @@ const conexionesTikTok = {}; // Guardará conexiones por streamerId
 let participantes = {};
 let subastaActiva = false;
 
-function configurarEventosTikTok(tiktokConn, streamerId) {
+function configurarEventosTikTok(tiktokConn, streamerId, io) {
 
     // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
     tiktokConn.on("gift", (data) => {
@@ -78,7 +78,7 @@ function configurarEventosTikTok(tiktokConn, streamerId) {
         console.log(`🎁 [${streamerId}] ${data.nickname} envió ${data.giftName} - Total acumulado: ${participantes[userId]?.cantidad || diamantes} 💎`);
         
         // 2. Notificar al cliente: Enviar la lista de participantes procesada
-        io.to(streamerId).emit("update_participantes", participantes); // <-- ¡CRÍTICO para tu Widget!
+        io.to(streamerId).emit("update_participantes", participantes); // ✅ Ahora funciona
 
         // 3. Log para el dashboard (El cliente aún escucha 'new_gift' para el log visual)
         io.to(streamerId).emit("new_gift", {
@@ -155,7 +155,7 @@ io.on("connection", (socket) => {
             conexionesTikTok[streamerId] = tiktokConn;
 
             // 🛑 LLAMADA CRÍTICA: Se configura el event listener UNA SOLA VEZ
-            configurarEventosTikTok(tiktokConn, streamerId);
+            configurarEventosTikTok(tiktokConn, streamerId, io); // ⬅️ AÑADIR 'io'
 }
     });
   // ===============================
