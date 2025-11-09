@@ -782,37 +782,14 @@ if (isWidgetMode) {
     // (Esto corre en AMBOS: Dashboard y Widget)
 // ===============================
 socket.on("new_gift", (giftData) => {
+    // 🛑 IMPORTANTE: Ya no se hace el conteo aquí. El servidor lo hará.
     console.log("💎 Nuevo regalo recibido del servidor:", giftData);
-
-    // ... (Tu código de extracción de datos sigue igual) ...
-    const userId = giftData.userId || giftData.user_id;
-    const nickname = giftData.nickname || giftData.username || "Desconocido";
-    // ...
-
-    // 🛑 CAMBIO CRÍTICO: Usar la clave del objeto en lugar de find()
-    let existente = participantes[userId]; 
-
-    if (existente) {
-        // Si existe, actualizamos directamente la propiedad del objeto
-        existente.cantidad = parseInt(existente.cantidad) + cantidadDelRegalo;
-        existente.avatar_url = profilePictureUrl;
-        // No necesitas reasignar, JavaScript maneja la referencia
-    } else {
-        // Si no existe, lo creamos como una nueva clave en el objeto
-        participantes[userId] = {
-            userId,
-            usuario: nickname,
-            cantidad: cantidadDelRegalo,
-            regalo: giftName,
-            avatar_url: profilePictureUrl || `https://via.placeholder.com/40/555/FFFFFF?text=${nickname.charAt(0)}`
-        };
-    }
-
-    // 🛑 NOTA: Si usas 'update_participantes' del servidor, esta línea 'sync_participantes' es redundante.
-    // socket.emit("sync_participantes", participantes); 
     
-    // NOTA 2: Si 'participantes' es un objeto, la ordenación debe hacerse solo para la UI:
-    actualizarParticipantesUI(); // Asumimos que esta función ahora convierte el objeto a array para ordenarlo
+    // Si necesitas logs en el Dashboard:
+    logDonacionesEl.innerHTML += `<p style="color: cyan;">🎁 ${giftData.nickname || giftData.username} envió ${giftData.giftName || giftData.gift_name} (${giftData.diamondCount || giftData.diamond_count} 💎)</p>`;
+    logDonacionesEl.scrollTop = logDonacionesEl.scrollHeight;
+    
+    // NOTA: La actualización de la UI se hará en el nuevo listener 'update_participantes'
 });
 // 📢 ¡AQUÍ VA LA LÍNEA DE SINCRONIZACIÓN!
             // Ahora la variable 'participantes' está finalizada, sumada y ordenada.
