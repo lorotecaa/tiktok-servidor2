@@ -946,15 +946,18 @@ socket.on("anunciar_ganador", (ganador) => {
         }, 10000);
 
     } else {
-        // ===========================
-        // 📺 MOSTRAR EN WIDGET (TIKTOK STUDIO)
-        // ===========================
-        console.log("👑 Mostrando ganador en el widget:", ganador.usuario);
+        // ===========================
+        // 📺 MOSTRAR EN WIDGET (TIKTOK STUDIO)
+        // ===========================
+        console.log("👑 Mostrando ganador en el widget:", ganador.usuario);
 
-        // 1️⃣ Limpiar el ranking
-        const rankingList = document.getElementById("listaParticipantes-widget");
-        if (rankingList) rankingList.innerHTML = "";
-        participantes = {};
+        // 1️⃣ Limpiar el ranking
+        const rankingList = document.getElementById("listaParticipantes-widget");
+        if (rankingList) rankingList.innerHTML = "";
+        participantes = {}; // ✅ ¡Asegúrate de que sea un OBJETO vacío!
+
+        // 2️⃣ Crear un banner flotante encima del widget
+        // ... (el resto de tu lógica para crear el container SÍ debería funcionar)
 
         // 2️⃣ Crear un banner flotante encima del widget
         const container = document.createElement("div");
