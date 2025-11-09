@@ -1090,8 +1090,17 @@ style.innerHTML = `
 document.head.appendChild(style);
 // Widget (Cliente) - Recepción de eventos del Dashboard
 socket.on("activar_alerta_snipe_visual", () => {
-    // Cuando el Dashboard dice que el Snipe comenzó, activamos la bandera visual
-    isSnipeModeVisual = true;
+    // 1. Activa la bandera lógica
+    isSnipeModeVisual = true; 
+    
+    // 🛑 2. AÑADE LA CLASE CSS PARA PONER EL WIDGET EN ROJO 🛑
+    document.body.classList.add('snipe-alert'); 
+
+    // 3. Opcional: Cambia el texto si aplica
+    const subtextElWidget = document.getElementById('subtext-tiempo');
+    if (subtextElWidget) {
+        subtextElWidget.textContent = '¡MODO SNIPE ACTIVO!';
+    }
 });
 // CÓDIGO EN EL CLIENTE/WIDGET (donde manejas el socket.on)
 
@@ -1105,14 +1114,23 @@ socket.on("desactivar_alerta_snipe_visual", () => {
         subtextElWidget.textContent = 'Tiempo por delay de live'; // O el texto original
     }
 });
-socket.on('finalizar_subasta', () => {
-    // Cuando la subasta termina, la bandera se apaga (además de la limpieza)
-    isSnipeModeVisual = false; 
+socket.on("desactivar_alerta_snipe_visual", () => {
+    // 1. Limpieza en el BODY y el contenedor principal (para ser exhaustivo)
+    document.body.classList.remove('snipe-alert'); 
+    document.body.classList.remove('alerta-activa'); // ⬅️ Clase genérica por si el nombre era otro
+
+    // 2. Limpieza en el elemento que contiene el tiempo (el 00:08, 00:28, etc.)
+    const tiempoRestanteEl = document.getElementById('tiempoRestante'); // ⬅️ Asumiendo que este ID muestra el tiempo
+    if (tiempoRestanteEl) {
+        tiempoRestanteEl.classList.remove('snipe-alert');
+        tiempoRestanteEl.classList.remove('alerta-activa');
+    }
     
-    // Y hacemos la limpieza final del cuerpo para volver a amarillo
-    document.body.classList.remove('snipe-alert');
-    const subtextElWidget = document.getElementById('subtext-widget');
-    if (subtextElWidget) subtextElWidget.textContent = "El sorteo/subasta termina en";
+    // 3. Restaurar el texto
+    const subtextElWidget = document.getElementById('subtext-tiempo');
+    if (subtextElWidget) {
+        subtextElWidget.textContent = 'Tiempo por delay de live'; 
+    }
 });
 document.addEventListener("DOMContentLoaded", () => {
     const params = new URLSearchParams(window.location.search);
