@@ -198,7 +198,11 @@ socket.on("finalizar_subasta", () => {
     // 🛑 El servidor RE-EMITE la señal a todos los clientes (incluyendo el widget)
     io.emit("anunciar_ganador", ganador);
   });
-
+socket.on("desactivar_alerta_snipe_visual", () => {
+    console.log("🧹 ALERTA SNIPE DESACTIVADA");
+    // Reemite la orden de limpieza a todos los clientes (widgets)
+    io.emit("desactivar_alerta_snipe_visual"); 
+});
   socket.on("limpiar_listas", () => {
     console.log("🧹 Limpiando listas...");
     io.emit("limpiar_listas_clientes");
