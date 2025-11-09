@@ -36,6 +36,9 @@ app.get("/widget", (req, res) => {
 // ===============================
 const conexionesTikTok = {}; // Guardará conexiones por streamerId
 let participantes = {};
+let subastaActiva = false;
+
+
 io.on("connection", (socket) => {
   console.log("🟢 Cliente conectado:", socket.id);
 
@@ -71,7 +74,13 @@ io.on("connection", (socket) => {
       // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
       tiktokConn.on("gift", (data) => {
         
-        // 🛑 FILTRO DE REPETICIÓN (Bug TikFinity): Contar solo el evento final
+        // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
+        if (subastaActiva === false) { 
+            // Opcional: puedes dejar un console.log aquí para debug
+            return; // Detiene la ejecución inmediatamente
+        }
+
+        // 🛑 FILTRO CRÍTICO 2: FILTRO DE REPETICIÓN (Bug TikFinity)
         if (data.repeatEnd === false && data.giftType !== 1) {
             return; // Ignoramos la racha intermedia
         }
@@ -136,6 +145,7 @@ io.on("connection", (socket) => {
     
     // 🛑 SOLUCIÓN BUG TIKFINITY (Paso 1): Limpiar la lista de participantes acumulados
     participantes = {}; 
+    subastaActiva = true; // ✅ Subasta activada 
     
     console.log("🚀 Subasta iniciada y lista de participantes limpia.");
     
@@ -152,9 +162,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("finalizar_subasta", () => {
-    console.log("⏹️ Subasta finalizada.");
-    io.emit("subasta_finalizada");
-  });
+    console.log("⏹️ Subasta finalizada.");
+    subastaActiva = false; // ✅ Subasta desactivada
+    io.emit("subasta_finalizada");
+  });
 
   socket.on("activar_alerta_snipe_visual", () => {
     console.log("⚡ ALERTA SNIPE ACTIVADA");
