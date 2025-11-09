@@ -608,7 +608,7 @@ function conectarDashboard() {
 
         // 7. APAGAR EL INTERRUPTOR Y LIMPIAR (SIEMPRE)
         subastaActiva = false; // <--- LUGAR CORRECTO (Fuera del if/else del ganador)
-        participantes = []; 
+        participantes = {}; 
         actualizarParticipantesUI(); 
         socket.emit("limpiar_listas"); // (Esta es la única llamada que debe estar)
     }
@@ -830,7 +830,7 @@ socket.on('id_invalido', (data) => {
 // ===============================
 socket.on("limpiar_listas_clientes", () => {
     console.log("🧹 Recibido comando para limpiar lista local.");
-    participantes = [];
+    participantes = {};
     actualizarParticipantesUI();
     subastaActiva = false;
     console.log("CLIENTE: Interruptor APAGADO.");
@@ -840,28 +840,36 @@ socket.on("limpiar_listas_clientes", () => {
 // 🧭 Función para actualizar la UI (debe ir FUERA de socket.on)
 // ===============================
 function actualizarParticipantesUI() {
-    participantes.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
+    // 🛑 PASO 1: CONVERTIR EL OBJETO PARTICIPANTES A UN ARRAY TEMPORAL
+    const participantesArray = Object.values(participantes);
+    
+    // PASO 2: Ordenar el nuevo array (participantesArray)
+    // Usamos el array temporal, no el objeto global 'participantes'
+    participantesArray.sort((a, b) => parseInt(b.cantidad) - parseInt(a.cantidad));
+
+    // 
 
     const listaDashboard = document.getElementById("listaParticipantes");
     const listaWidget = document.getElementById("listaParticipantes-widget");
     if (listaDashboard) listaDashboard.innerHTML = "";
     if (listaWidget) listaWidget.innerHTML = "";
 
-    participantes.forEach((p, index) => {
+    // PASO 3: Recorrer el array ordenado
+    participantesArray.forEach((p, index) => { // <-- Usamos participantesArray aquí
         const itemHTML = `
             <li class="participante-item">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <span class="rank">${index + 1}.</span>
-            <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=U'}"
-                alt="${p.usuario || 'Usuario'}" 
-                style="width:40px; height:40px; border-radius:50%;"> 
-            
-            <span class="username" title="${p.usuario}"> ${p.usuario}
-            </span>
-        </div>
-        <div class="coins">${p.cantidad} 💎</div>
-    </li>
-`;
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="rank">${index + 1}.</span>
+                    <img src="${p.avatar_url || 'https://via.placeholder.com/40/000/fff?text=U'}"
+                        alt="${p.usuario || 'Usuario'}" 
+                        style="width:40px; height:40px; border-radius:50%;"> 
+                    
+                    <span class="username" title="${p.usuario}"> ${p.usuario}
+                    </span>
+                </div>
+                <div class="coins">${p.cantidad} 💎</div>
+            </li>
+        `;
 
         if (listaDashboard && !document.body.classList.contains('widget-mode')) {
             listaDashboard.innerHTML += itemHTML;
@@ -946,7 +954,7 @@ socket.on("anunciar_ganador", (ganador) => {
         // 1️⃣ Limpiar el ranking
         const rankingList = document.getElementById("listaParticipantes-widget");
         if (rankingList) rankingList.innerHTML = "";
-        participantes = [];
+        participantes = {};
 
         // 2️⃣ Crear un banner flotante encima del widget
         const container = document.createElement("div");
@@ -991,7 +999,13 @@ socket.on("anunciar_ganador", (ganador) => {
         }, 10000);
     }
 });
-
+socket.on("update_participantes", (listaActualizada) => {
+    // 1. Guardar la lista actualizada
+    participantes = listaActualizada; 
+    
+    // 2. Redibujar la interfaz
+    actualizarParticipantesUI(); 
+});
 /* Animación del popup */
 const style = document.createElement("style");
 style.innerHTML = `
