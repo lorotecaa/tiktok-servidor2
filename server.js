@@ -177,7 +177,11 @@ io.on("connection", (socket) => {
   socket.on("sync_time", (time) => {
     socket.broadcast.emit("update_time", time);
   });
-
+socket.on("reset_snipe_state_visual", () => {
+    console.log("🚩 Bandera de Snipe Visual reseteada.");
+    // Reemite la orden de resetear la bandera lógica en todos los Widgets
+    io.emit("reset_snipe_state_visual"); 
+});
 socket.on("finalizar_subasta", () => {
     console.log("⏹️ Subasta finalizada (Regalos detenidos).");
     subastaActiva = false; 
