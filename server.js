@@ -39,6 +39,21 @@ let participantes = {};
 let subastaActiva = false;
 
 
+// 🛑 AÑADIR ESTA FUNCIÓN AQUÍ
+function calcularGanador(listaParticipantes) {
+    const participantesArray = Object.values(listaParticipantes);
+
+    if (participantesArray.length === 0) {
+        return null;
+    }
+
+    // Ordenar por cantidad descendente
+    participantesArray.sort((a, b) => b.cantidad - a.cantidad);
+    
+    // Devolver el primero (el de mayor cantidad)
+    return participantesArray[0];
+}
+
 io.on("connection", (socket) => {
   console.log("🟢 Cliente conectado:", socket.id);
 
@@ -163,8 +178,20 @@ io.on("connection", (socket) => {
 
   socket.on("finalizar_subasta", () => {
     console.log("⏹️ Subasta finalizada.");
-    subastaActiva = false; // ✅ Subasta desactivada
+    subastaActiva = false; 
     io.emit("subasta_finalizada");
+
+    // 🛑 NUEVO CÓDIGO CRÍTICO: Calcular y Anunciar al Ganador
+    const ganador = calcularGanador(participantes);
+
+    // Si hay un ganador, emite la señal que el cliente está esperando
+    if (ganador) {
+        console.log(`🏆 Ganador calculado: ${ganador.usuario} con ${ganador.cantidad} diamantes.`);
+        io.emit("anunciar_ganador", ganador);
+    } else {
+        console.log("⚠️ No se encontró ganador porque no hubo participantes.");
+        io.emit("anunciar_ganador", null); 
+    }
   });
 
   socket.on("activar_alerta_snipe_visual", () => {
