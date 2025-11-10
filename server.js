@@ -37,6 +37,19 @@ app.get("/widget", (req, res) => {
 const conexionesTikTok = {}; // Guardará conexiones por streamerId
 let participantes = {};
 let subastaActiva = false;
+// ===============================
+// 💎 MAPA DE VALORES PARA REGALOS QUE FALLAN
+// ===============================
+const highValueGiftMap = {
+    // ⚠️ DEBES PONER EL VALOR REAL DE DIAMANTES
+    // El "Welcome Seal" es el que viste fallar con 0 diamantes.
+    "WelcomeSeal": 10000, // <<-- VALOR DE EJEMPLO. AJUSTA ESTE NÚMERO
+    "Lion": 29999,
+    "Universe": 34999,
+    "Rocket": 20000,
+    // Añade el nombre EXACTO de cualquier otro regalo que te reporte 0 diamantes
+    // Ejemplo: "NewGiftName": 5000,
+};
 
 function configurarEventosTikTok(tiktokConn, streamerId, io) {
 
@@ -45,36 +58,44 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
     
     // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
     if (subastaActiva === false) { 
-        return; // Detiene la ejecución inmediatamente
+        return; 
     }
 
     // 🚨 FILTRO DE DUPLICIDAD 🚨
     // Solo contamos si data.repeatEnd es TRUE para el evento final de una racha (giftType: 1).
-    // Los regalos ÚNICOS (giftType: 0) siempre pasan este filtro.
     if (data.giftType === 1 && data.repeatEnd === false) {
         console.log(`[IGNORADO - Duplicidad] Ignorando evento intermedio/de racha para: ${data.giftName}`);
         return; 
     }
     
     const userId = data.uniqueId;
-    let diamantes = 0; // Se inicializa en 0 y se calcula a continuación.
+    let diamantes = 0; // Se inicializa en 0.
 
-    // ✅ LÓGICA ROBUSTA FINAL POR TIPO DE REGALO ✅
+    // ✅ LÓGICA ROBUSTA FINAL POR TIPO DE REGALO (Con Fallback por Nombre) ✅
 
     // 1. Manejar REGALOS ÚNICOS/GRANDES (giftType: 0)
-    // Para estos, data.diamondCount es el valor TOTAL más fiable.
     if (data.giftType === 0) {
+        // Opción A: Intentar usar el valor reportado (el más fiable, pero a veces falla).
         diamantes = data.diamondCount || 0;
-        console.log(`[Cálculo - Único/Grande] Usando valor unitario (el más fiable): ${diamantes} 💎`);
+
+        // Opción B: Si data.diamondCount reportó 0 o 1, y es un regalo conocido, usar el mapa manual.
+        const giftNameKey = data.giftName.replace(/\s/g, ''); 
+        
+        if (diamantes <= 1 && highValueGiftMap[giftNameKey]) {
+             diamantes = highValueGiftMap[giftNameKey];
+             console.log(`[Cálculo - Manual] Asignando valor por nombre (${data.giftName}): ${diamantes} 💎`);
+        } else {
+             console.log(`[Cálculo - Único/Grande] Usando valor reportado: ${diamantes} 💎`);
+        }
     }
     // 2. Manejar REGALOS DE RACHA (giftType: 1)
     else if (data.giftType === 1) {
-        // Opción A: Usar el valor total reportado por TikTok (el más fácil).
+        // Opción A: Usar el valor total reportado por TikTok.
         if (data.totalDiamondCount > 0) {
             diamantes = data.totalDiamondCount;
             console.log(`[Cálculo - Racha] Usando totalDiamondCount (esperado): ${diamantes} 💎`);
         }
-        // Opción B: Si falla (es 0), hacemos el cálculo de racha manual (el fallback).
+        // Opción B: Si falla (es 0), hacemos el cálculo de racha manual.
         else if (data.diamondCount > 0) {
             diamantes = data.diamondCount * (data.repeatCount || 1);
             console.log(`[Cálculo - Racha Fallback] Calculando diamantes: ${diamantes} 💎`);
@@ -97,21 +118,19 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
         }
     }
 
-        console.log(`🎁 [${streamerId}] ${data.nickname} envió ${data.giftName} - Total acumulado: ${participantes[userId]?.cantidad || diamantes} 💎`);
-        
-        // 2. Notificar al cliente: Enviar la lista de participantes procesada
-        io.to(streamerId).emit("update_participantes", participantes); // ✅ Ahora funciona
+    // 2. Notificar al cliente: Enviar la lista de participantes procesada
+    io.to(streamerId).emit("update_participantes", participantes); 
 
-        // 3. Log para el dashboard (El cliente aún escucha 'new_gift' para el log visual)
-        io.to(streamerId).emit("new_gift", {
-            userId: userId,
-            nickname: data.nickname,
-            giftName: data.giftName,
-            diamondCount: diamantes 
-        });
-        
-        // 4. Lógica de Snipe...
+    // 3. Log para el dashboard
+    io.to(streamerId).emit("new_gift", {
+        userId: userId,
+        nickname: data.nickname,
+        giftName: data.giftName,
+        diamondCount: diamantes 
     });
+    
+    // 4. Lógica de Snipe...
+});
 
     // 💬 Evento: mensaje en el chat
     tiktokConn.on("chat", (data) => {
