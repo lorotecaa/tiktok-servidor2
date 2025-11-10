@@ -57,12 +57,23 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
         
         const userId = data.uniqueId;
         let diamantes = data.totalDiamondCount || 0;
-        // Si totalDiamondCount sigue siendo 0 (fallo de la librería en regalos de racha), 
-// usamos la cantidad unitaria (diamondCount) multiplicada por el conteo de la racha.
-// Solo hacemos esto si NO es 0 y es el evento final de una racha.
-if (diamantes === 0 && data.diamondCount > 0 && data.repeatEnd === true) {
-    diamantes = data.diamondCount * (data.repeatCount || 1);
-    console.log(`[FALLBACK] Calculando diamantes por racha: ${diamantes} 💎`);
+        // 🚨 LÓGICA DE FALLBACK ROBUSTA PARA REGALOS GRANDES 🚨
+// Este bloque solo se ejecuta si 'totalDiamondCount' fue reportado como 0.
+
+if (diamantes === 0 && data.diamondCount > 0) {
+    // 1. Manejar REGALOS DE RACHA (giftType: 1)
+    if (data.giftType === 1 && data.repeatEnd === true) {
+        // Usa el valor unitario multiplicado por el número de repeticiones de la racha
+        diamantes = data.diamondCount * (data.repeatCount || 1);
+        console.log(`[FALLBACK - Racha] Calculando diamantes por racha: ${diamantes} 💎`);
+    } 
+    // 2. Manejar REGALOS ÚNICOS GRANDES (giftType: 0)
+    else if (data.giftType === 0) {
+        // Asume que data.diamondCount es el valor unitario correcto.
+        // Esto captura regalos como el León o Universo cuando 'totalDiamondCount' es 0.
+        diamantes = data.diamondCount * 1; 
+        console.log(`[FALLBACK - Único Grande] Usando valor unitario: ${diamantes} 💎`);
+    }
 }
         // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
         if (diamantes > 0) {
