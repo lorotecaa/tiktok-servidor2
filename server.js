@@ -55,6 +55,8 @@ const highValueGiftMap = {
     "Confetti": 100, // Añadido Confetti
     "InfiniteChain": 100, // Cadenainfinita
     "Cadenainfinita": 100, 
+"Gorra": 100, // ⬅️ AÑADIDO: Gorra
+"Cap": 100, // ⬅️ AÑADIDO: Gorra (Inglés)
     "HeartShapedBalloons": 149, // Globosconformadecorazon
     "Globosconformadecorazon": 149, 
     "Lazo": 149, 
