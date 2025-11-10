@@ -42,24 +42,42 @@ let subastaActiva = false;
 // ===============================
 const normalizeGiftName = (name) => {
     return name
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-        .replace(/ñ/g, 'n')
-        .replace(/\s/g, ''); 
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar tildes
+        .replace(/ñ/g, 'n') // Quitar ñ por n
+        .replace(/\s/g, ''); // Quitar espacios
 };
+// 🛑 FUNCIÓN AUXILIAR: CALCULAR GANADOR 
+function calcularGanador(listaParticipantes) {
+    const participantesArray = Object.values(listaParticipantes);
+
+    if (participantesArray.length === 0) {
+        return null;
+    }
+
+    // Ordenar por cantidad descendente
+    participantesArray.sort((a, b) => b.cantidad - a.cantidad);
+    
+    // Devolver el primero (el de mayor cantidad)
+    return participantesArray[0];
+}
 const highValueGiftMap = {
     // 1 Moneda
     "HeartMe": 1, 
     "Rose": 1, 
 
-    // 100 - 449 Monedas
-    "Confeti": 100, 
-    "Confetti": 100, 
-    "MarvelousConfetti": 100, // ⬅️ AÑADIDO: Confeti Maravilloso
-    "InfiniteChain": 100, // Cadenainfinita
-    "Cadenainfinita": 100, 
+    // 99 - 449 Monedas (Añadido Sello de Bienvenida de 99)
+    "SelloBienvenidaPequeño": 99,
+    "SelloBienvenida": 99, 
+    "WelcomeSealSmall": 99,
     "Gorra": 100, 
     "Cap": 100, 
-    "HeartShapedBalloons": 149, // Globosconformadecorazon
+    "Confeti": 100, 
+    "Confetti": 100, 
+    "MarvelousConfetti": 100, 
+    "Marvelous Confetti": 100, // ⬅️ AÑADIDO: Con espacio
+    "InfiniteChain": 100, 
+    "Cadenainfinita": 100, 
+    "HeartShapedBalloons": 149, 
     "Globosconformadecorazon": 149, 
     "Lazo": 149, 
     "Ribbon": 149, 
@@ -92,7 +110,8 @@ const highValueGiftMap = {
     "XXXLFlowers": 500,
     "Manifestando": 500, 
     "Calentamientoestelar": 500, 
-    "StellarWarmup": 500, // ⬅️ CONFIRMADO: Calentamiento Estelar
+    "StellarWarmup": 500, 
+    "Star Warmup": 500, // ⬅️ AÑADIDO: Con espacio
     "GafasdeDJ": 500, 
     "DJGoggles": 500,
     "Abracitos": 500, 
@@ -281,8 +300,8 @@ const highValueGiftMap = {
     "GoldenLounge": 18000,
     "Transbordador": 20000, 
     "Shuttle": 20000,
-    "SelloBienvenida": 20000,
-    "WelcomeSeal": 20000, // ⬅️ CONFIRMADO: Sello de Bienvenida
+    "SelloGranBallena": 20000,
+    "WelcomeSeal": 20000, // ⬅️ CONFIRMADO: El grande
 
     "ElsueñodeAdam": 25999, 
     "AdamsDream": 25999,
@@ -302,93 +321,84 @@ const highValueGiftMap = {
 
 function configurarEventosTikTok(tiktokConn, streamerId, io) {
 
+    // Nota: Se asume que 'subastaActiva' y 'participantes' son variables globales 
+    // y que 'highValueGiftMap' y 'normalizeGiftName' están definidos antes.
+
     // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
     tiktokConn.on("gift", (data) => {
     
-    // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
-    if (subastaActiva === false) { 
-        return; 
-    }
+        // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
+        if (subastaActiva === false) { 
+            return; 
+        }
 
-    // 🚨 FILTRO DE DUPLICIDAD 🚨
-    // Solo contamos si data.repeatEnd es TRUE para el evento final de una racha (giftType: 1).
-    // NOTA: Para regalos tipo 0 (grandes) no existe 'repeatEnd', se procesan una vez.
-    if (data.giftType === 1 && data.repeatEnd === false) {
-        console.log(`[IGNORADO - Duplicidad] Ignorando evento intermedio/de racha para: ${data.giftName}`);
-        return; 
-    }
-    
-    const userId = data.uniqueId;
-    let diamantes = 0; // Se inicializa en 0.
-
-    // ✅ PASO CRÍTICO: NORMALIZAR el nombre para la búsqueda en el mapa
-    const giftNameKey = normalizeGiftName(data.giftName);
-    const mapValue = highValueGiftMap[giftNameKey];
-
-    // ✅ LÓGICA ROBUSTA FINAL POR TIPO DE REGALO (Con Prioridad al Mapa) ✅
-
-    // 1. Manejar REGALOS ÚNICOS/GRANDES (giftType: 0)
-    if (data.giftType === 0) {
+        // 🚨 FILTRO DE DUPLICIDAD (Bug de TikFinity) 🚨
+        // Ignorar eventos intermedios de racha (giftType === 1 y repeatEnd === false).
+        // SOLO procesar el evento final de la racha (repeatEnd === true) o regalos únicos (giftType === 0).
+        if (data.giftType === 1 && data.repeatEnd === false) {
+            console.log(`[IGNORADO - Racha en curso] Ignorando evento intermedio para: ${data.giftName}`);
+            return; 
+        }
         
+        const userId = data.uniqueId;
+        const giftName = data.giftName;
+        const repeatCount = data.repeatCount || 1;
+        
+        let diamantes = 0; 
+        
+        // 1. NORMALIZAR y buscar en el mapa (✅ CORRECCIÓN IMPLEMENTADA AQUÍ)
+        const giftNameKeyNormalized = normalizeGiftName(giftName); 
+        
+        // Buscamos el valor en el mapa por el nombre original Y por el nombre normalizado.
+        // Esto cubre casos como "Star Warmup" (con espacio) y "StarWarmup" (normalizado).
+        const mapValue = highValueGiftMap[giftName] || highValueGiftMap[giftNameKeyNormalized];
+
+        // 2. LÓGICA DE VALOR (Prioridad al Mapa)
         if (mapValue) {
-            // ✅ PRIORIDAD A MAPA: Si el regalo está en el mapa, USAMOS ese valor.
-            diamantes = mapValue;
-            console.log(`[Cálculo - Manual/Universal] Asignando valor por nombre (${data.giftName}): ${diamantes} 💎`);
+            // ✅ PRIORIDAD A MAPA: Multiplicar el valor unitario del mapa por el conteo de repetición.
+            diamantes = mapValue * repeatCount;
+            console.log(`[Cálculo - Mapa] Asignando valor por nombre (${giftName}): ${diamantes} 💎`);
         } else {
             // Si NO está en el mapa, usamos el valor reportado por TikTok.
-            diamantes = data.diamondCount || 0;
-            console.log(`[Cálculo - Único/Grande] Usando valor reportado: ${diamantes} 💎`);
+            // Para rachas que acaban, totalDiamondCount es preferido. Para regalos únicos, diamondCount.
+            diamantes = data.totalDiamondCount || (data.diamondCount * repeatCount) || 0;
+            console.log(`[Cálculo - Reporte] Usando valor reportado: ${diamantes} 💎`);
         }
-    }
-    // 2. Manejar REGALOS DE RACHA (giftType: 1)
-    else if (data.giftType === 1) {
         
-        if (mapValue) {
-            // ✅ PRIORIDAD A MAPA: Multiplicamos el valor unitario del mapa por el conteo de repetición.
-            diamantes = mapValue * (data.repeatCount || 1);
-            console.log(`[Cálculo - Racha Manual] Calculando diamantes (Mapa * Repetición): ${diamantes} 💎`);
+        // 3. FIX CRÍTICO PARA REGALOS DE 1 MONEDA ("Heart Me", "Rose")
+        // Si el valor es 0 (fallo común de la API en rachas cortas de 1 moneda), lo forzamos a 1 moneda por repetición.
+        if (diamantes === 0 && (giftName === 'Heart Me' || giftName === 'Rose')) {
+     diamantes = 1 * repeatCount; 
+     console.log(`[Cálculo - FIX Heart/Rose] Forzando valor a: ${diamantes} 💎`);
+}
+        
+        // 4. CONTEO CENTRALIZADO: Lógica de acumulación
+        if (diamantes > 0) {
+            if (participantes[userId]) {
+                // Existe: acumular
+                participantes[userId].cantidad += diamantes;
+            } else {
+                // Nuevo: crear
+                participantes[userId] = {
+                    userId: userId,
+                    usuario: data.nickname,
+                    cantidad: diamantes,
+                    avatar_url: data.profilePictureUrl
+                };
+            }
         }
-        // Si NO está en el mapa, usamos el cálculo de racha de TikTok.
-        else if (data.totalDiamondCount > 0) {
-            diamantes = data.totalDiamondCount;
-            console.log(`[Cálculo - Racha] Usando totalDiamondCount (esperado): ${diamantes} 💎`);
-        }
-        // Fallback si totalDiamondCount es 0.
-        else if (data.diamondCount > 0) {
-            diamantes = data.diamondCount * (data.repeatCount || 1);
-            console.log(`[Cálculo - Racha Fallback] Calculando diamantes: ${diamantes} 💎`);
-        }
-    }
-    
-    // 1. CONTEO CENTRALIZADO: Lógica de acumulación
-    if (diamantes > 0) {
-        if (participantes[userId]) {
-            // Existe: acumular
-            participantes[userId].cantidad += diamantes;
-        } else {
-            // Nuevo: crear
-            participantes[userId] = {
-                userId: userId,
-                usuario: data.nickname,
-                cantidad: diamantes,
-                avatar_url: data.profilePictureUrl
-            };
-        }
-    }
 
-    // 2. Notificar al cliente: Enviar la lista de participantes procesada
-    io.to(streamerId).emit("update_participantes", participantes); 
+        // 5. Notificar al cliente: Enviar la lista de participantes procesada
+        io.to(streamerId).emit("update_participantes", participantes); 
 
-    // 3. Log para el dashboard
-    io.to(streamerId).emit("new_gift", {
-        userId: userId,
-        nickname: data.nickname,
-        giftName: data.giftName,
-        diamondCount: diamantes 
+        // 6. Log para el dashboard
+        io.to(streamerId).emit("new_gift", {
+            userId: userId,
+            nickname: data.nickname,
+            giftName: data.giftName,
+            diamondCount: diamantes 
+        });
     });
-    
-    // 4. Lógica de Snipe...
-});
 
     // 💬 Evento: mensaje en el chat
     tiktokConn.on("chat", (data) => {
@@ -406,21 +416,6 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
         });
     });
 }
-// 🛑 AÑADIR ESTA FUNCIÓN AQUÍ
-function calcularGanador(listaParticipantes) {
-    const participantesArray = Object.values(listaParticipantes);
-
-    if (participantesArray.length === 0) {
-        return null;
-    }
-
-    // Ordenar por cantidad descendente
-    participantesArray.sort((a, b) => b.cantidad - a.cantidad);
-    
-    // Devolver el primero (el de mayor cantidad)
-    return participantesArray[0];
-}
-
 io.on("connection", (socket) => {
   console.log("🟢 Cliente conectado:", socket.id);
 
