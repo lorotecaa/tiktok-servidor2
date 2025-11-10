@@ -48,8 +48,7 @@ const normalizeGiftName = (name) => {
 };
 const highValueGiftMap = {
     // Regalos de 1 Moneda (0.5 Diamantes)
-    "HeartMe": 0.5,
-    "Rose": 0.5,
+    "Heart Me": 1,
     
     // Regalos de 100 - 449 Monedas (50 - 224.5 Diamantes)
     "Confeti": 50,
