@@ -49,7 +49,7 @@ const normalizeGiftName = (name) => {
 const highValueGiftMap = {
     // 1 Moneda
     "HeartMe": 1, 
-
+    "Quiéreme": 1, // Por si la reporta en español.
     // 100 - 449 Monedas
     "Confeti": 100, 
     "Confetti": 100, // Añadido Confetti
@@ -549,3 +549,4 @@ socket.on("desactivar_alerta_snipe_visual", () => {
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
+
