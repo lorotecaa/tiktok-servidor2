@@ -40,6 +40,12 @@ let subastaActiva = false;
 // ===============================
 // 💎 MAPA DE VALORES PARA REGALOS QUE FALLAN
 // ===============================
+const normalizeGiftName = (name) => {
+    return name
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+        .replace(/ñ/g, 'n')
+        .replace(/\s/g, ''); 
+};
 const highValueGiftMap = {
     // Regalos de 1 Moneda (0.5 Diamantes)
     "HeartMe": 0.5,
@@ -184,8 +190,8 @@ const highValueGiftMap = {
 
 function configurarEventosTikTok(tiktokConn, streamerId, io) {
 
-    // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
-    tiktokConn.on("gift", (data) => {
+    // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
+    tiktokConn.on("gift", (data) => {
     
     // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
     if (subastaActiva === false) { 
@@ -194,6 +200,7 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
 
     // 🚨 FILTRO DE DUPLICIDAD 🚨
     // Solo contamos si data.repeatEnd es TRUE para el evento final de una racha (giftType: 1).
+    // NOTA: Para regalos tipo 0 (grandes) no existe 'repeatEnd', se procesan una vez.
     if (data.giftType === 1 && data.repeatEnd === false) {
         console.log(`[IGNORADO - Duplicidad] Ignorando evento intermedio/de racha para: ${data.giftName}`);
         return; 
@@ -202,31 +209,39 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
     const userId = data.uniqueId;
     let diamantes = 0; // Se inicializa en 0.
 
-    // ✅ LÓGICA ROBUSTA FINAL POR TIPO DE REGALO (Con Fallback por Nombre) ✅
+    // ✅ PASO CRÍTICO: NORMALIZAR el nombre para la búsqueda en el mapa
+    const giftNameKey = normalizeGiftName(data.giftName);
+    const mapValue = highValueGiftMap[giftNameKey];
+
+    // ✅ LÓGICA ROBUSTA FINAL POR TIPO DE REGALO (Con Prioridad al Mapa) ✅
 
     // 1. Manejar REGALOS ÚNICOS/GRANDES (giftType: 0)
     if (data.giftType === 0) {
-        // Opción A: Intentar usar el valor reportado (el más fiable, pero a veces falla).
-        diamantes = data.diamondCount || 0;
-
-        // Opción B: Si data.diamondCount reportó 0 o 1, y es un regalo conocido, usar el mapa manual.
-        const giftNameKey = data.giftName.replace(/\s/g, ''); 
         
-        if (diamantes <= 1 && highValueGiftMap[giftNameKey]) {
-             diamantes = highValueGiftMap[giftNameKey];
-             console.log(`[Cálculo - Manual] Asignando valor por nombre (${data.giftName}): ${diamantes} 💎`);
+        if (mapValue) {
+            // ✅ PRIORIDAD A MAPA: Si el regalo está en el mapa, USAMOS ese valor.
+            diamantes = mapValue;
+            console.log(`[Cálculo - Manual/Universal] Asignando valor por nombre (${data.giftName}): ${diamantes} 💎`);
         } else {
-             console.log(`[Cálculo - Único/Grande] Usando valor reportado: ${diamantes} 💎`);
+            // Si NO está en el mapa, usamos el valor reportado por TikTok.
+            diamantes = data.diamondCount || 0;
+            console.log(`[Cálculo - Único/Grande] Usando valor reportado: ${diamantes} 💎`);
         }
     }
     // 2. Manejar REGALOS DE RACHA (giftType: 1)
     else if (data.giftType === 1) {
-        // Opción A: Usar el valor total reportado por TikTok.
-        if (data.totalDiamondCount > 0) {
+        
+        if (mapValue) {
+            // ✅ PRIORIDAD A MAPA: Multiplicamos el valor unitario del mapa por el conteo de repetición.
+            diamantes = mapValue * (data.repeatCount || 1);
+            console.log(`[Cálculo - Racha Manual] Calculando diamantes (Mapa * Repetición): ${diamantes} 💎`);
+        }
+        // Si NO está en el mapa, usamos el cálculo de racha de TikTok.
+        else if (data.totalDiamondCount > 0) {
             diamantes = data.totalDiamondCount;
             console.log(`[Cálculo - Racha] Usando totalDiamondCount (esperado): ${diamantes} 💎`);
         }
-        // Opción B: Si falla (es 0), hacemos el cálculo de racha manual.
+        // Fallback si totalDiamondCount es 0.
         else if (data.diamondCount > 0) {
             diamantes = data.diamondCount * (data.repeatCount || 1);
             console.log(`[Cálculo - Racha Fallback] Calculando diamantes: ${diamantes} 💎`);
