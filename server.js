@@ -42,54 +42,60 @@ function configurarEventosTikTok(tiktokConn, streamerId, io) {
 
     // 🎁 Evento: regalo recibido (Lógica de Conteo, Filtro y Emisión de lista)
     tiktokConn.on("gift", (data) => {
-        
-        // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
-        if (subastaActiva === false) { 
-            return; // Detiene la ejecución inmediatamente
-        }
-
-        // 🚨 SOLUCIÓN FINAL BUG DE DUPLICIDAD 🚨
-        // Solo contamos si data.repeatEnd es TRUE (es el evento final de un regalo/racha).
-        if (data.giftType === 1 && data.repeatEnd === false) {
-            console.log(`[IGNORADO - Duplicidad] Ignorando evento intermedio/de racha para: ${data.giftName}`);
-            return; 
-        }
-        
-        const userId = data.uniqueId;
-        let diamantes = data.totalDiamondCount || 0;
-        // 🚨 LÓGICA DE FALLBACK ROBUSTA PARA REGALOS GRANDES 🚨
-// Este bloque solo se ejecuta si 'totalDiamondCount' fue reportado como 0.
-
-if (diamantes === 0 && data.diamondCount > 0) {
-    // 1. Manejar REGALOS DE RACHA (giftType: 1)
-    if (data.giftType === 1 && data.repeatEnd === true) {
-        // Usa el valor unitario multiplicado por el número de repeticiones de la racha
-        diamantes = data.diamondCount * (data.repeatCount || 1);
-        console.log(`[FALLBACK - Racha] Calculando diamantes por racha: ${diamantes} 💎`);
-    } 
-    // 2. Manejar REGALOS ÚNICOS GRANDES (giftType: 0)
-    else if (data.giftType === 0) {
-        // Asume que data.diamondCount es el valor unitario correcto.
-        // Esto captura regalos como el León o Universo cuando 'totalDiamondCount' es 0.
-        diamantes = data.diamondCount * 1; 
-        console.log(`[FALLBACK - Único Grande] Usando valor unitario: ${diamantes} 💎`);
+    
+    // 🛑 FILTRO CRÍTICO 1: Detener el conteo si la subasta no está activa
+    if (subastaActiva === false) { 
+        return; // Detiene la ejecución inmediatamente
     }
-}
-        // 1. CONTEO CENTRALIZADO: Lógica de acumulación en el servidor
-        if (diamantes > 0) {
-            if (participantes[userId]) {
-                // Existe: acumular
-                participantes[userId].cantidad += diamantes;
-            } else {
-                // Nuevo: crear
-                participantes[userId] = {
-                    userId: userId,
-                    usuario: data.nickname,
-                    cantidad: diamantes,
-                    avatar_url: data.profilePictureUrl
-                };
-            }
-        }
+
+    // 🚨 FILTRO DE DUPLICIDAD 🚨
+    // Solo contamos si data.repeatEnd es TRUE para el evento final de una racha (giftType: 1).
+    // Los regalos ÚNICOS (giftType: 0) siempre pasan este filtro.
+    if (data.giftType === 1 && data.repeatEnd === false) {
+        console.log(`[IGNORADO - Duplicidad] Ignorando evento intermedio/de racha para: ${data.giftName}`);
+        return; 
+    }
+    
+    const userId = data.uniqueId;
+    let diamantes = 0; // Se inicializa en 0 y se calcula a continuación.
+
+    // ✅ LÓGICA ROBUSTA FINAL POR TIPO DE REGALO ✅
+
+    // 1. Manejar REGALOS ÚNICOS/GRANDES (giftType: 0)
+    // Para estos, data.diamondCount es el valor TOTAL más fiable.
+    if (data.giftType === 0) {
+        diamantes = data.diamondCount || 0;
+        console.log(`[Cálculo - Único/Grande] Usando valor unitario (el más fiable): ${diamantes} 💎`);
+    }
+    // 2. Manejar REGALOS DE RACHA (giftType: 1)
+    else if (data.giftType === 1) {
+        // Opción A: Usar el valor total reportado por TikTok (el más fácil).
+        if (data.totalDiamondCount > 0) {
+            diamantes = data.totalDiamondCount;
+            console.log(`[Cálculo - Racha] Usando totalDiamondCount (esperado): ${diamantes} 💎`);
+        }
+        // Opción B: Si falla (es 0), hacemos el cálculo de racha manual (el fallback).
+        else if (data.diamondCount > 0) {
+            diamantes = data.diamondCount * (data.repeatCount || 1);
+            console.log(`[Cálculo - Racha Fallback] Calculando diamantes: ${diamantes} 💎`);
+        }
+    }
+    
+    // 1. CONTEO CENTRALIZADO: Lógica de acumulación
+    if (diamantes > 0) {
+        if (participantes[userId]) {
+            // Existe: acumular
+            participantes[userId].cantidad += diamantes;
+        } else {
+            // Nuevo: crear
+            participantes[userId] = {
+                userId: userId,
+                usuario: data.nickname,
+                cantidad: diamantes,
+                avatar_url: data.profilePictureUrl
+            };
+        }
+    }
 
         console.log(`🎁 [${streamerId}] ${data.nickname} envió ${data.giftName} - Total acumulado: ${participantes[userId]?.cantidad || diamantes} 💎`);
         
